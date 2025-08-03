@@ -8,27 +8,27 @@ repository = "https://github.com/murphsicles/zip"
 
 [dependencies]
 dioxus = { version = "0.6", features = ["desktop", "mobile", "skia"] }
-sled = "0.34"
+dioxus-motion = "0.2"  # For swipe animations
+keyring = "2.3"
+nprint = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", optional = true }
 oauth2 = { git = "https://github.com/ramosbugs/oauth2-rs", tag = "v0.4" }
 openidconnect = "3.5"
-webauthn-rs = "0.5"
-rust-sv = { git = "https://github.com/murphsicles/rust-sv", tag = "v0.2" }
+parking_lot = "0.12"  # Efficient concurrency primitives
 paymail = { git = "https://github.com/murphsicles/paymail-rs", tag = "v0.3" }
-nprint = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", optional = true }
-rustbus = { git = "https://github.com/murphsicles/RustBus", tag = "v0.1", optional = true }
+rand = "0.8"
 reqwest = { version = "0.12", features = ["json"] }
-tokio = { version = "1.41", features = ["full"] }
+rust-sv = { git = "https://github.com/murphsicles/rust-sv", tag = "v0.2" }
+rustbus = { git = "https://github.com/murphsicles/RustBus", tag = "v0.1", optional = true }
 secrecy = "0.8"
-keyring = "2.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-uuid = { version = "1.11", features = ["v4"] }
-rand = "0.8"
+sled = "0.34"
 thiserror = "1.0"
-dioxus-motion = "0.2"  # For swipe animations
+tokio = { version = "1.41", features = ["full"] }
 tracing = "0.1"  # For logging
 tracing-subscriber = "0.3"  # Structured logging
-parking_lot = "0.12"  # Efficient concurrency primitives
+uuid = { version = "1.11", features = ["v4"] }
+webauthn-rs = "0.5"
 
 [features]
 default = []
