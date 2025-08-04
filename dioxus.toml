@@ -1,0 +1,17 @@
+[application]
+name = "zip"
+
+[web]
+index = "index.html"
+resource.dev = ["src/styles.css"]
+
+[desktop]
+title = "Zip Wallet"
+tray = false
+
+[mobile]
+ios = true
+android = true
+
+[wasm]
+output = "web"
