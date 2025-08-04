@@ -1,6 +1,9 @@
 use dioxus::prelude::*;
 use dioxus_router::prelude::*;
+use uuid::Uuid;
 
+use crate::auth::{OAuthManager, PasskeyManager};
+use crate::blockchain::{PaymailManager, WalletManager};
 use crate::ui::components::{AuthForm, Dashboard, PaymentForm, SwipeButton};
 use crate::ui::transitions::{fade_in, slide_left};
 
@@ -19,29 +22,65 @@ pub enum Route {
 #[component]
 pub fn AppRouter() -> Element {
     rsx! {
-        Router::<Route> {}
+        Router::<Route> {
+            // Provide context for all routes
+            ContextProvider {
+                value: {
+                    let storage = Arc::new(ZipStorage::new().unwrap());
+                    let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage)));
+                    let wallet = WalletManager::new(Arc::clone(&storage), tx_manager).unwrap();
+                    let oauth = OAuthManager::new(Arc::clone(&storage)).unwrap();
+                    let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
+                    let paymail = PaymailManager::new(PrivateKey::new());
+                    (wallet, oauth, passkey, paymail)
+                },
+                div {
+                    class: "app-container",
+                    RouteRenderer {}
+                }
+            }
+        }
     }
 }
 
 #[component]
 fn Home() -> Element {
-    slide_left(rsx! { h1 { "Welcome to Zip Wallet" } })
+    slide_right(rsx! {
+        h1 { class: "title", "Zip Wallet" }
+        Link { to: Route::Auth, "Sign Up / Login" }
+        Link { to: Route::Payment, "Make a Payment" }
+    })
 }
 
 #[component]
 fn Auth() -> Element {
-    fade_in(rsx! { AuthForm {} })
+    fade_in(rsx! {
+        AuthForm {}
+    })
 }
 
 #[component]
 fn DashboardRoute() -> Element {
-    fade_in(rsx! { Dashboard {} })
+    let wallet = use_context::<WalletManager>();
+    let user_id = use_signal(|| Uuid::new_v4()); // Replace with actual user state
+    let balance = use_signal(|| 0u64);
+
+    use_effect(move || async move {
+        balance.set(wallet.update_balance(*user_id.read()).await.unwrap_or(0));
+    });
+
+    fade_in(rsx! {
+        Dashboard {}
+    })
 }
 
 #[component]
 fn Payment() -> Element {
     fade_in(rsx! {
         PaymentForm {}
-        SwipeButton { recipient: "example@paymail.com", amount: 1000 }
+        SwipeButton {
+            recipient: "example@paymail.com", // From PaymentForm input
+            amount: 1000 // From PaymentForm input
+        }
     })
 }
