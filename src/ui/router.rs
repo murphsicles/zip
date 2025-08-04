@@ -1,11 +1,14 @@
 use dioxus::prelude::*;
 use dioxus_router::prelude::*;
+use rust_decimal::Decimal;
 use uuid::Uuid;
 
 use crate::auth::{OAuthManager, PasskeyManager};
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
+use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
 use crate::ui::components::{AuthForm, Dashboard, History, PaymentForm, SwipeButton};
+use crate::ui::styles::global_styles;
 use crate::ui::transitions::{fade_in, slide_right};
 
 #[derive(Routable, Clone)]
@@ -20,6 +23,8 @@ pub enum Route {
     Payment,
     #[route("/history")]
     HistoryRoute,
+    #[route("/settings")]
+    SettingsRoute,
 }
 
 #[component]
@@ -29,15 +34,17 @@ pub fn AppRouter() -> Element {
             ContextProvider {
                 value: {
                     let storage = Arc::new(ZipStorage::new().unwrap());
-                    let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), None));
-                    let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager)).unwrap();
+                    let rustbus = Arc::new(RustBusIntegrator::new("http://localhost:8080").unwrap());
+                    let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), Some(Arc::clone(&rustbus))));
+                    let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus))).unwrap();
                     let oauth = OAuthManager::new(Arc::clone(&storage)).unwrap();
                     let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
-                    let paymail = PaymailManager::new(PrivateKey::new());
-                    (wallet, oauth, passkey, paymail, tx_manager)
+                    let paymail = PaymailManager::new(PrivateKey::new(), Arc::clone(&storage));
+                    (wallet, oauth, passkey, paymail, tx_manager, rustbus)
                 },
                 div {
                     class: "app-container",
+                    style: "{global_styles()}",
                     RouteRenderer {}
                 }
             }
@@ -52,6 +59,7 @@ fn Home() -> Element {
         Link { to: Route::Auth, "Sign Up / Login" }
         Link { to: Route::Payment, "Make a Payment" }
         Link { to: Route::History, "View History" }
+        Link { to: Route::Settings, "Settings" }
     })
 }
 
@@ -65,9 +73,15 @@ fn DashboardRoute() -> Element {
     let wallet = use_context::<WalletManager>();
     let user_id = use_signal(|| Uuid::new_v4());
     let balance = use_signal(|| 0u64);
+    let balance_converted = use_signal(|| Decimal::ZERO);
 
     use_effect(move || async move {
-        balance.set(wallet.update_balance(*user_id.read()).await.unwrap_or(0));
+        let (bsv, usd) = wallet
+            .update_balance(*user_id.read(), "USD")
+            .await
+            .unwrap_or((0, Decimal::ZERO));
+        balance.set(bsv);
+        balance_converted.set(usd);
     });
 
     fade_in(rsx! { Dashboard {} })
@@ -87,4 +101,9 @@ fn Payment() -> Element {
 #[component]
 fn HistoryRoute() -> Element {
     fade_in(rsx! { History {} })
+}
+
+#[component]
+fn SettingsRoute() -> Element {
+    fade_in(rsx! { Settings {} })
 }
