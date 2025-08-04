@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  rustbus:
+    image: rustbus:latest
+    build:
+      context: ../RustBus  # Path to RustBus repo
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"  # REST/GraphQL endpoint
+      - "9000:9000"  # WebSocket for real-time
+    environment:
+      - RUSTBUS_DB_PATH=/data/rustbus_db
+      - RUSTBUS_BSV_NODE=bsv-node-url
+      - RUSTBUS_LOG_LEVEL=info
+    volumes:
+      - rustbus-data:/data
+    restart: always
+
+volumes:
+  rustbus-data:
