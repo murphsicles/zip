@@ -54,9 +54,15 @@ impl AuthManager {
         cred: PublicKeyCredential,
         state: PasskeyAuthenticationState,
     ) -> Result<(), ZipError> {
-        let result = self.passkey.complete_authentication(cred, state)?;
-        let email = "passkey_user@example.com"; // Placeholder, fetch from storage or external
-        self.session.create_session(user_id, email.to_string()).await?;
+        self.passkey.complete_authentication(cred, state)?;
+        // Fetch email from storage or session
+        let email = self
+            .session
+            .get_session(user_id)
+            .await?
+            .map(|s| s.email)
+            .unwrap_or("passkey_user@example.com".to_string());
+        self.session.create_session(user_id, email).await?;
         Ok(())
     }
 
