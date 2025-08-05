@@ -1,11 +1,12 @@
-use tokio::runtime::Runtime;
+use std::sync::Arc;
 use uuid::Uuid;
 
+use rust_decimal::Decimal;
+
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
-use crate::config::Config;
+use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::integrations::RustBusIntegrator;
-use crate::paymail_config::PaymailConfig;
 use crate::storage::ZipStorage;
 
 #[cfg(test)]
@@ -16,7 +17,7 @@ mod tests {
     fn test_pre_create_utxos() {
         let storage = Arc::new(ZipStorage::new().unwrap());
         let rustbus = None::<Arc<RustBusIntegrator>>;
-        let tx_manager = TransactionManager::new(Arc::clone(&storage), rustbus);
+        let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), rustbus));
         let user_id = Uuid::new_v4();
         let result = tx_manager.pre_create_utxos(user_id, 5, 10000).block_on().unwrap();
         assert_eq!(result.len(), 5);
@@ -29,7 +30,7 @@ mod tests {
     async fn test_build_payment_tx() {
         let storage = Arc::new(ZipStorage::new().unwrap());
         let rustbus = None::<Arc<RustBusIntegrator>>;
-        let tx_manager = TransactionManager::new(Arc::clone(&storage), rustbus);
+        let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), rustbus));
         let user_id = Uuid::new_v4();
         // Pre-create UTXOs
         tx_manager.pre_create_utxos(user_id, 5, 10000).await.unwrap();
@@ -124,5 +125,42 @@ mod tests {
         paymail.create_paid_alias(user_id, "54321").await.unwrap();
         let result = paymail.confirm_alias(user_id, "54321@zip.io").await;
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_wallet_payment_rate_limit() {
+        let storage = Arc::new(ZipStorage::new().unwrap());
+        let rustbus = Arc::new(RustBusIntegrator::new().unwrap());
+        let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), Some(Arc::clone(&rustbus))));
+        let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus))).unwrap();
+        let user_id = Uuid::new_v4();
+        let script = Script::default();
+        let amount = 1000;
+        let fee = 100;
+
+        // Test rate limit (5 requests per minute)
+        for _ in 0..5 {
+            let result = wallet.send_payment(user_id, script.clone(), amount, fee).await;
+            assert!(result.is_err()); // Mock transaction failure
+        }
+        let result = wallet.send_payment(user_id, script, amount, fee).await;
+        assert!(matches!(result, Err(ZipError::RateLimit(_))));
+    }
+
+    #[tokio::test]
+    async fn test_wallet_balance_rate_limit() {
+        let storage = Arc::new(ZipStorage::new().unwrap());
+        let rustbus = Arc::new(RustBusIntegrator::new().unwrap());
+        let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), Some(Arc::clone(&rustbus))));
+        let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus))).unwrap();
+        let user_id = Uuid::new_v4();
+
+        // Test rate limit (5 requests per minute)
+        for _ in 0..5 {
+            let result = wallet.update_balance(user_id, "USD").await;
+            assert!(result.is_ok()); // Mock balance update
+        }
+        let result = wallet.update_balance(user_id, "USD").await;
+        assert!(matches!(result, Err(ZipError::RateLimit(_))));
     }
 }
