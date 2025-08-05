@@ -7,7 +7,7 @@ use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::config::Config;
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
-use crate::ui::components::{AuthForm, Dashboard, History, PaymentForm, Settings, WalletOverview};
+use crate::ui::components::{AuthForm, Dashboard, History, NavBar, PaymentForm, Settings, WalletOverview};
 use crate::ui::router::AppRouter;
 
 #[cfg(test)]
@@ -121,5 +121,31 @@ mod tests {
         let html = app.render_to_string();
         assert!(html.contains("54321@zip.io"));
         assert!(html.contains("Pay 10 USD"));
+    }
+
+    #[tokio::test]
+    async fn test_navbar_render() {
+        let storage = Arc::new(ZipStorage::new().unwrap());
+        let rustbus = Arc::new(RustBusIntegrator::new("http://localhost:8080").unwrap());
+        let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), Some(Arc::clone(&rustbus))));
+        let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus))).unwrap();
+        let paymail = PaymailManager::new(PrivateKey::new(), Arc::clone(&storage));
+        let oauth = OAuthManager::new(Arc::clone(&storage)).unwrap();
+        let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
+
+        let app = VirtualDom::new_with_props(AppRouter, |c| {
+            c.with_context(wallet)
+                .with_context(paymail)
+                .with_context(oauth)
+                .with_context(passkey)
+                .with_context(tx_manager)
+                .with_context(rustbus)
+        });
+        let html = app.render_to_string();
+        assert!(html.contains("Home"));
+        assert!(html.contains("Wallet"));
+        assert!(html.contains("Send"));
+        assert!(html.contains("History"));
+        assert!(html.contains("Settings"));
     }
 }
