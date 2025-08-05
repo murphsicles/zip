@@ -7,7 +7,7 @@ use crate::auth::{AuthManager, SessionManager};
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
-use crate::ui::components::{Auth, AuthCallback, Dashboard, History, Home, Logout, NavBar, PaymentForm, Settings, SwipeButton, WalletOverview};
+use crate::ui::components::{Auth, AuthCallback, Dashboard, History, Home, Logout, NavBar, PaymentForm, Profile, Settings, SwipeButton, WalletOverview};
 use crate::ui::styles::global_styles;
 use crate::ui::transitions::fade_in;
 
@@ -29,6 +29,8 @@ pub enum Route {
     SettingsRoute,
     #[route("/logout")]
     LogoutRoute,
+    #[route("/profile")]
+    ProfileRoute,
 }
 
 #[component]
@@ -148,4 +150,18 @@ fn LogoutRoute() -> Element {
     });
 
     fade_in(rsx! { Logout {} })
+}
+
+#[component]
+fn ProfileRoute() -> Element {
+    let session = use_context::<SessionManager>();
+    let user_id = use_signal(|| Uuid::new_v4());
+
+    use_effect(move || async move {
+        if !session.is_authenticated(*user_id.read()).await {
+            use_router().push(Route::Auth);
+        }
+    });
+
+    fade_in(rsx! { Profile {} })
 }
