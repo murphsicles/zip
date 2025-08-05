@@ -3,7 +3,7 @@ use dioxus_router::prelude::*;
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
-use crate::auth::{OAuthManager, PasskeyManager};
+use crate::auth::{OAuthManager, PasskeyManager, SessionManager};
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
@@ -44,7 +44,8 @@ pub fn AppRouter() -> Element {
                     let oauth = OAuthManager::new(Arc::clone(&storage)).unwrap();
                     let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
                     let paymail = PaymailManager::new(PrivateKey::new(), Arc::clone(&storage));
-                    (wallet, oauth, passkey, paymail, tx_manager, rustbus)
+                    let session = SessionManager::new(Arc::clone(&storage));
+                    (wallet, oauth, passkey, paymail, tx_manager, rustbus, session)
                 },
                 div {
                     class: "app-container",
@@ -61,25 +62,24 @@ pub fn AppRouter() -> Element {
 
 #[component]
 fn Home() -> Element {
-    let oauth = use_context::<OAuthManager>();
-    let is_authenticated = use_signal(|| false); // Placeholder for auth state
+    let session = use_context::<SessionManager>();
+    let is_authenticated = use_signal(|| false);
+    let user_id = use_signal(|| Uuid::new_v4());
 
     use_effect(move || async move {
-        // Check if user data exists to determine auth state
-        let user_id = Uuid::new_v4();
-        if oauth.storage.get_user_data(user_id).unwrap().is_some() {
-            is_authenticated.set(true);
-        }
+        is_authenticated.set(session.is_authenticated(*user_id.read()).await);
     });
 
     slide_right(rsx! {
         h1 { class: "title", "Zip Wallet" }
-        Link { to: Route::Auth, class: "nav-link", "Sign Up / Login" }
-        Link { to: Route::Payment, class: "nav-link", "Make a Payment" }
-        Link { to: Route::History, class: "nav-link", "View History" }
-        Link { to: Route::Settings, class: "nav-link", "Settings" }
         if *is_authenticated.read() {
-            Link { to: Route::Logout, class: "nav-link", "Logout" }
+            Link { to: Route::DashboardRoute, class: "nav-link", "Wallet" }
+            Link { to: Route::Payment, class: "nav-link", "Send" }
+            Link { to: Route::HistoryRoute, class: "nav-link", "History" }
+            Link { to: Route::SettingsRoute, class: "nav-link", "Settings" }
+            Link { to: Route::LogoutRoute, class: "nav-link", "Logout" }
+        } else {
+            Link { to: Route::Auth, class: "nav-link", "Sign Up / Login" }
         }
     })
 }
@@ -96,11 +96,29 @@ fn AuthCallbackRoute() -> Element {
 
 #[component]
 fn DashboardRoute() -> Element {
+    let session = use_context::<SessionManager>();
+    let user_id = use_signal(|| Uuid::new_v4());
+
+    use_effect(move || async move {
+        if !session.is_authenticated(*user_id.read()).await {
+            use_router().push(Route::Auth);
+        }
+    });
+
     fade_in(rsx! { WalletOverview {} })
 }
 
 #[component]
 fn Payment() -> Element {
+    let session = use_context::<SessionManager>();
+    let user_id = use_signal(|| Uuid::new_v4());
+
+    use_effect(move || async move {
+        if !session.is_authenticated(*user_id.read()).await {
+            use_router().push(Route::Auth);
+        }
+    });
+
     fade_in(rsx! {
         PaymentForm {}
         SwipeButton {
@@ -112,15 +130,42 @@ fn Payment() -> Element {
 
 #[component]
 fn HistoryRoute() -> Element {
+    let session = use_context::<SessionManager>();
+    let user_id = use_signal(|| Uuid::new_v4());
+
+    use_effect(move || async move {
+        if !session.is_authenticated(*user_id.read()).await {
+            use_router().push(Route::Auth);
+        }
+    });
+
     fade_in(rsx! { History {} })
 }
 
 #[component]
 fn SettingsRoute() -> Element {
+    let session = use_context::<SessionManager>();
+    let user_id = use_signal(|| Uuid::new_v4());
+
+    use_effect(move || async move {
+        if !session.is_authenticated(*user_id.read()).await {
+            use_router().push(Route::Auth);
+        }
+    });
+
     fade_in(rsx! { Settings {} })
 }
 
 #[component]
 fn LogoutRoute() -> Element {
+    let session = use_context::<SessionManager>();
+    let user_id = use_signal(|| Uuid::new_v4());
+
+    use_effect(move || async move {
+        if !session.is_authenticated(*user_id.read()).await {
+            use_router().push(Route::Auth);
+        }
+    });
+
     fade_in(rsx! { Logout {} })
 }
