@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use tokio::runtime::Runtime;
 use uuid::Uuid;
 
-use crate::auth::{OAuthManager, PasskeyManager};
+use crate::auth::{OAuthManager, PasskeyManager, SessionManager};
 use crate::config::Config;
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
@@ -93,23 +93,29 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_logout_render() {
+    async fn test_session_management() {
         let storage = Arc::new(ZipStorage::new().unwrap());
-        let oauth = OAuthManager::new(Arc::clone(&storage)).unwrap();
-        let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
+        let session = SessionManager::new(Arc::clone(&storage));
         let user_id = Uuid::new_v4();
 
-        // Simulate authenticated state
-        oauth
-            .storage
-            .store_user_data(user_id, b"test_user")
-            .unwrap();
+        // Test unauthenticated state
+        assert!(!session.is_authenticated(user_id).await);
 
-        let app = VirtualDom::new_with_props(AppRouter, |c| {
-            c.with_context(oauth).with_context(passkey)
-        });
-        let html = app.render_to_string();
-        assert!(html.contains("Logout"));
-        assert!(html.contains("Confirm Logout"));
+        // Create session
+        session
+            .create_session(user_id, "test@example.com".to_string())
+            .await
+            .unwrap();
+        let session_data = session.get_session(user_id).await.unwrap().unwrap();
+        assert!(session_data.is_authenticated);
+        assert_eq!(session_data.email, "test@example.com");
+
+        // Test navigation auth check
+        assert!(session.is_authenticated(user_id).await);
+
+        // Clear session
+        session.clear_session(user_id).await.unwrap();
+        assert!(!session.is_authenticated(user_id).await);
+        assert!(session.get_session(user_id).await.unwrap().is_none());
     }
 }
