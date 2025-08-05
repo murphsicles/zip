@@ -1,0 +1,86 @@
+benches/
+    └── main.rs
+embed/
+    ├── src/
+        └── lib.rs
+    └── Cargo.toml
+examples/
+    └── main.rs
+src/
+    ├── auth/
+        ├── auth.rs
+        ├── mod.rs
+        ├── oauth.rs
+        ├── passkey.rs
+        └── session.rs
+    ├── blockchain/
+        ├── mod.rs
+        ├── paymail.rs
+        ├── transaction.rs
+        └── wallet.rs
+    ├── config/
+        ├── env.rs
+        └── mod.rs
+    ├── integrations/
+        ├── mod.rs
+        ├── nprint.rs
+        └── rustbus.rs
+    ├── ui/
+        ├── components/
+            ├── app.rs
+            ├── auth_callback.rs
+            ├── auth_form.rs
+            ├── auth.rs
+            ├── dashboard.rs
+            ├── error.rs
+            ├── history.rs
+            ├── home.rs
+            ├── loading.rs
+            ├── logout.rs
+            ├── mod.rs
+            ├── nav.rs
+            ├── notifications.rs
+            ├── payment_form.rs
+            ├── profile.rs
+            ├── settings.rs
+            ├── swipe_button.rs
+            ├── theme_switcher.rs
+            ├── theme.rs
+            └── wallet.rs
+        ├── router.rs
+        ├── styles.rs
+        └── transitions.rs
+    ├── utils/
+        ├── auth.rs
+        ├── cache.rs
+        ├── crypto.rs
+        ├── error.rs
+        ├── logging.rs
+        ├── metrics.rs
+        ├── rate_limiter.rs
+        ├── security.rs
+        ├── session.rs
+        ├── telemetry.rs
+        └── validation.rs
+    ├── config.rs
+    ├── errors.rs
+    ├── lib.rs
+    ├── main.rs
+    ├── paymail_config.rs
+    ├── storage.rs
+    └── utils.rs
+tests/
+    ├── auth_tests.rs
+    ├── blockchain_tests.rs
+    ├── config_tests.rs
+    ├── integration_tests.rs
+    ├── storage_tests.rs
+    ├── ui_tests.rs
+    └── utils_tests.rs
+.gitignore
+Cargo.toml
+dioxus.toml
+docker-compose.yml
+LICENSE
+README.md
+rust-toolchain.toml
