@@ -1,16 +1,17 @@
 use dioxus::prelude::*;
 use dioxus_motion::use_animated;
 use dioxus_router::prelude::*;
+use uuid::Uuid;
 
-use crate::auth::{OAuthManager, PasskeyManager};
+use crate::auth::AuthManager;
 use crate::errors::ZipError;
 use crate::ui::components::{ErrorDisplay, Loading, Notification};
 use crate::ui::styles::global_styles;
 
 #[component]
 pub fn Logout() -> Element {
-    let oauth = use_context::<OAuthManager>();
-    let passkey = use_context::<PasskeyManager>();
+    let auth = use_context::<AuthManager>();
+    let user_id = use_signal(|| Uuid::new_v4());
     let error = use_signal(|| None::<ZipError>);
     let notification = use_signal(|| None::<String>);
     let is_loading = use_signal(|| false);
@@ -18,8 +19,7 @@ pub fn Logout() -> Element {
 
     let on_logout = move |_| async move {
         is_loading.set(true);
-        // Clear session data (placeholder for OAuth/Passkey cleanup)
-        match oauth.clear_session().await {
+        match auth.logout(*user_id.read()).await {
             Ok(_) => {
                 notification.set(Some("Logged out successfully".to_string()));
                 use_router().push(Route::Home);
