@@ -2,12 +2,11 @@ use dioxus::prelude::*;
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
-use crate::auth::{OAuthManager, PasskeyManager};
+use crate::auth::{OAuthManager, PasskeyManager, SessionManager};
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
-use crate::config::Config;
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
-use crate::ui::components::{AuthForm, Dashboard, History, Logout, NavBar, PaymentForm, Settings, WalletOverview};
+use crate::ui::components::{AuthForm, Dashboard, History, Home, Logout, NavBar, PaymentForm, Settings, WalletOverview};
 use crate::ui::router::AppRouter;
 
 #[cfg(test)]
@@ -160,5 +159,37 @@ mod tests {
         });
         let html = app.render_to_string();
         assert!(html.contains("Confirm Logout"));
+    }
+
+    #[tokio::test]
+    async fn test_home_render() {
+        let storage = Arc::new(ZipStorage::new().unwrap());
+        let session = SessionManager::new(Arc::clone(&storage));
+        let user_id = Uuid::new_v4();
+
+        // Test unauthenticated state
+        let app = VirtualDom::new_with_props(AppRouter, |c| {
+            c.with_context(session.clone())
+        });
+        let html = app.render_to_string();
+        assert!(html.contains("Zip Wallet"));
+        assert!(html.contains("Sign Up / Login"));
+        assert!(html.contains("Make a Payment"));
+        assert!(html.contains("View History"));
+        assert!(html.contains("Settings"));
+        assert!(!html.contains("Wallet"));
+        assert!(!html.contains("Logout"));
+
+        // Test authenticated state
+        session
+            .create_session(user_id, "test@example.com".to_string())
+            .await
+            .unwrap();
+        let app = VirtualDom::new_with_props(AppRouter, |c| {
+            c.with_context(session)
+        });
+        let html = app.render_to_string();
+        assert!(html.contains("Wallet"));
+        assert!(html.contains("Logout"));
     }
 }
