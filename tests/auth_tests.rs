@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use tokio::runtime::Runtime;
 use uuid::Uuid;
 
-use crate::auth::{OAuthManager, PasskeyManager, SessionManager};
+use crate::auth::{AuthManager, OAuthManager, PasskeyManager, SessionManager};
 use crate::config::Config;
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
@@ -14,8 +14,8 @@ mod tests {
     #[test]
     fn test_oauth_start_flow() {
         let storage = Arc::new(ZipStorage::new().unwrap());
-        let oauth = OAuthManager::new(Arc::clone(&storage)).unwrap();
-        let (url, csrf) = oauth.start_oauth_flow();
+        let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
+        let (url, csrf) = auth.start_oauth();
         assert!(!url.is_empty());
         assert!(!csrf.is_empty());
     }
@@ -23,58 +23,64 @@ mod tests {
     #[tokio::test]
     async fn test_oauth_complete_flow() {
         let storage = Arc::new(ZipStorage::new().unwrap());
-        let oauth = OAuthManager::new(Arc::clone(&storage)).unwrap();
+        let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
         // Mock OAuth callback
         let code = "mock_code".to_string();
         let pkce_verifier = PkceCodeVerifier::new("mock_verifier".to_string());
         let csrf = "mock_csrf".to_string();
-        let result = oauth.complete_oauth_flow(code, pkce_verifier, csrf).await;
+        let result = auth.complete_oauth(code, pkce_verifier, csrf).await;
         assert!(matches!(result, Err(ZipError::OAuth(_))));
+        // Verify session creation
+        let user_id = Uuid::new_v4();
+        assert!(!auth.is_authenticated(user_id).await);
     }
 
     #[tokio::test]
     async fn test_oauth_clear_session() {
         let storage = Arc::new(ZipStorage::new().unwrap());
-        let oauth = OAuthManager::new(Arc::clone(&storage)).unwrap();
+        let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
         let user_id = Uuid::new_v4();
         // Store some data
-        oauth
-            .storage
-            .store_user_data(user_id, b"test_data")
+        auth.session
+            .create_session(user_id, "test@example.com".to_string())
+            .await
             .unwrap();
-        assert!(oauth.storage.get_user_data(user_id).unwrap().is_some());
+        assert!(auth.is_authenticated(user_id).await);
         // Clear session
-        oauth.clear_session(user_id).await.unwrap();
-        assert!(oauth.storage.get_user_data(user_id).unwrap().is_none());
+        auth.logout(user_id).await.unwrap();
+        assert!(!auth.is_authenticated(user_id).await);
+        assert!(auth.session.get_session(user_id).await.unwrap().is_none());
     }
 
     #[test]
     fn test_passkey_registration() {
         let storage = Arc::new(ZipStorage::new().unwrap());
-        let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
+        let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
         let user_id = Uuid::new_v4();
-        let (challenge, _) = passkey.start_registration(user_id, "test_user").unwrap();
+        let (challenge, _) = auth.passkey.start_registration(user_id, "test_user").unwrap();
         assert!(!challenge.public_key.challenge.is_empty());
     }
 
     #[tokio::test]
     async fn test_passkey_authentication() {
         let storage = Arc::new(ZipStorage::new().unwrap());
-        let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
+        let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
         let user_id = Uuid::new_v4();
-        let (challenge, state) = passkey.start_registration(user_id, "test_user").unwrap();
+        let (challenge, state) = auth.passkey.start_registration(user_id, "test_user").unwrap();
         let cred = CreationPublicKeyCredential::default();
-        let reg = passkey.complete_registration(cred, state).unwrap();
-        let (auth_challenge, auth_state) = passkey.start_authentication(user_id, Some("123456")).await.unwrap();
+        let reg = auth.passkey.complete_registration(cred, state).unwrap();
+        let (auth_challenge, auth_state) = auth.start_passkey_authentication(user_id, Some("123456")).await.unwrap();
         let auth_cred = PublicKeyCredential::default();
-        let result = passkey.complete_authentication(auth_cred, auth_state);
+        let result = auth.complete_passkey_authentication(user_id, auth_cred, auth_state).await;
         assert!(matches!(result, Err(ZipError::Passkey(_))));
+        // Verify session creation
+        assert!(auth.is_authenticated(user_id).await);
     }
 
     #[tokio::test]
     async fn test_passkey_2fa_authentication() {
         let storage = Arc::new(ZipStorage::new().unwrap());
-        let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
+        let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
         let user_id = Uuid::new_v4();
 
         // Enable 2FA
@@ -84,11 +90,11 @@ mod tests {
         storage.store_user_data(user_id, &serialized).unwrap();
 
         // Test with invalid 2FA code
-        let result = passkey.start_authentication(user_id, Some("wrong_code")).await;
+        let result = auth.start_passkey_authentication(user_id, Some("wrong_code")).await;
         assert!(matches!(result, Err(ZipError::Passkey(_))));
 
         // Test with missing 2FA code
-        let result = passkey.start_authentication(user_id, None).await;
+        let result = auth.start_passkey_authentication(user_id, None).await;
         assert!(matches!(result, Err(ZipError::Passkey(_))));
     }
 
