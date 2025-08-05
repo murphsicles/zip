@@ -2,6 +2,7 @@ use std::env;
 
 use crate::config::env::EnvConfig;
 use crate::errors::ZipError;
+use crate::utils::logging::setup_logging;
 
 #[cfg(test)]
 mod tests {
@@ -56,5 +57,48 @@ mod tests {
         env::remove_var("OAUTH_REDIRECT_URI");
         env::remove_var("RUSTBUS_ENDPOINT");
         env::remove_var("LOG_LEVEL");
+    }
+
+    #[test]
+    fn test_logging_setup_info() {
+        let config = EnvConfig {
+            oauth_client_id: String::new(),
+            oauth_client_secret: String::new(),
+            oauth_auth_url: String::new(),
+            oauth_token_url: String::new(),
+            oauth_redirect_uri: String::new(),
+            rustbus_endpoint: String::new(),
+            log_level: "info".to_string(),
+        };
+        assert!(setup_logging(&config).is_ok());
+        // Verify logging level (tracing doesn't expose filter for direct testing, so rely on init success)
+    }
+
+    #[test]
+    fn test_logging_setup_debug() {
+        let config = EnvConfig {
+            oauth_client_id: String::new(),
+            oauth_client_secret: String::new(),
+            oauth_auth_url: String::new(),
+            oauth_token_url: String::new(),
+            oauth_redirect_uri: String::new(),
+            rustbus_endpoint: String::new(),
+            log_level: "debug".to_string(),
+        };
+        assert!(setup_logging(&config).is_ok());
+    }
+
+    #[test]
+    fn test_logging_setup_invalid() {
+        let config = EnvConfig {
+            oauth_client_id: String::new(),
+            oauth_client_secret: String::new(),
+            oauth_auth_url: String::new(),
+            oauth_token_url: String::new(),
+            oauth_redirect_uri: String::new(),
+            rustbus_endpoint: String::new(),
+            log_level: "invalid_level".to_string(),
+        };
+        assert!(matches!(setup_logging(&config), Err(ZipError::Config(_))));
     }
 }
