@@ -1,27 +1,28 @@
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::auth::{OAuthManager, PasskeyManager, SessionManager};
+use crate::auth::{OAuthManager, PasskeyManager};
 use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
+use crate::utils::session::Session;
 use crate::utils::telemetry::Telemetry;
 
 pub struct AuthManager {
     oauth: OAuthManager,
     passkey: PasskeyManager,
-    session: SessionManager,
+    session: Session,
     telemetry: Telemetry,
 }
 
 impl AuthManager {
-    /// Initializes unified auth manager with telemetry.
+    /// Initializes unified auth manager with session and telemetry.
     pub fn new(storage: Arc<ZipStorage>) -> Result<Self, ZipError> {
         let config = EnvConfig::load()?;
         Ok(Self {
             oauth: OAuthManager::new(Arc::clone(&storage))?,
             passkey: PasskeyManager::new(Arc::clone(&storage))?,
-            session: SessionManager::new(Arc::clone(&storage)),
+            session: Session::new(Arc::clone(&storage))?,
             telemetry: Telemetry::new(&config),
         })
     }
@@ -43,7 +44,7 @@ impl AuthManager {
         let result = self.oauth.complete_oauth_flow(code, pkce_verifier, csrf_token).await;
         let success = result.is_ok();
         if let Ok((user_id, email)) = &result {
-            self.session.create_session(*user_id, email.clone()).await?;
+            self.session.create(*user_id, email.clone()).await?;
             let _ = self.telemetry.track_auth_event(&user_id.to_string(), "oauth_complete", success).await;
         }
         result.map(|(user_id, _)| user_id)
@@ -72,11 +73,11 @@ impl AuthManager {
         if success {
             let email = self
                 .session
-                .get_session(user_id)
+                .get(user_id)
                 .await?
                 .map(|s| s.email)
                 .unwrap_or("passkey_user@example.com".to_string());
-            self.session.create_session(user_id, email).await?;
+            self.session.create(user_id, email).await?;
         }
         let _ = self.telemetry.track_auth_event(&user_id.to_string(), "passkey_complete", success).await;
         result
@@ -89,7 +90,7 @@ impl AuthManager {
 
     /// Clears session for logout and tracks event.
     pub async fn logout(&self, user_id: Uuid) -> Result<(), ZipError> {
-        let result = self.session.clear_session(user_id).await;
+        let result = self.session.clear(user_id).await;
         let success = result.is_ok();
         let _ = self.telemetry.track_auth_event(&user_id.to_string(), "logout", success).await;
         result
