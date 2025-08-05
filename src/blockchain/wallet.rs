@@ -15,6 +15,7 @@ use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
+use crate::utils::cache::Cache;
 use crate::utils::telemetry::Telemetry;
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -32,7 +33,7 @@ pub struct WalletManager {
     rustbus: Option<Arc<RustBusIntegrator>>,
     hd_key: RwLock<ExtendedPrivateKey>,
     derivation_index: RwLock<u32>,
-    price_cache: RwLock<HashMap<String, Decimal>>,
+    price_cache: Arc<Cache<String, Decimal>>,
     telemetry: Telemetry,
 }
 
@@ -58,7 +59,7 @@ impl WalletManager {
             rustbus,
             hd_key: RwLock::new(hd_key),
             derivation_index: RwLock::new(0),
-            price_cache: RwLock::new(HashMap::new()),
+            price_cache: Arc::new(Cache::new(300)), // 5min TTL
             telemetry: Telemetry::new(&config),
         })
     }
@@ -96,11 +97,8 @@ impl WalletManager {
     /// Fetches BSV price in specified currency, caches for 5min.
     async fn fetch_price(&self, currency: &str) -> Result<Decimal, ZipError> {
         let cache_key = currency.to_string();
-        {
-            let cache = self.price_cache.read();
-            if let Some(price) = cache.get(&cache_key) {
-                return Ok(*price);
-            }
+        if let Some(price) = self.price_cache.get(&cache_key).await {
+            return Ok(price);
         }
 
         let client = Client::new();
@@ -118,15 +116,7 @@ impl WalletManager {
             .ok_or(ZipError::Blockchain("Invalid price data".to_string()))?;
         let price = Decimal::from_f64(price).unwrap_or_default();
 
-        {
-            let mut cache = self.price_cache.write();
-            cache.insert(cache_key, price);
-            spawn(async move {
-                tokio::time::sleep(std::time::Duration::from_secs(300)).await;
-                cache.remove(&cache_key);
-            });
-        }
-
+        self.price_cache.insert(cache_key, price).await;
         Ok(price)
     }
 
