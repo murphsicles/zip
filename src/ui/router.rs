@@ -3,13 +3,14 @@ use dioxus_router::prelude::*;
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
-use crate::auth::{AuthManager, SessionManager};
+use crate::auth::AuthManager;
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
 use crate::ui::components::{Auth, AuthCallback, Dashboard, History, Home, Logout, NavBar, PaymentForm, Profile, Settings, SwipeButton, WalletOverview};
 use crate::ui::styles::global_styles;
 use crate::ui::transitions::fade_in;
+use crate::utils::session::Session;
 
 #[derive(Routable, Clone)]
 pub enum Route {
@@ -40,12 +41,12 @@ pub fn AppRouter() -> Element {
             ContextProvider {
                 value: {
                     let storage = Arc::new(ZipStorage::new().unwrap());
-                    let rustbus = Arc::new(RustBusIntegrator::new("http://localhost:8080").unwrap());
+                    let rustbus = Arc::new(RustBusIntegrator::new().unwrap());
                     let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), Some(Arc::clone(&rustbus))));
                     let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus))).unwrap();
                     let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
                     let paymail = PaymailManager::new(PrivateKey::new(), Arc::clone(&storage));
-                    let session = SessionManager::new(Arc::clone(&storage));
+                    let session = Session::new(Arc::clone(&storage)).unwrap();
                     (wallet, auth, paymail, tx_manager, rustbus, session)
                 },
                 div {
@@ -78,7 +79,7 @@ fn AuthCallbackRoute() -> Element {
 
 #[component]
 fn DashboardRoute() -> Element {
-    let session = use_context::<SessionManager>();
+    let session = use_context::<Session>();
     let user_id = use_signal(|| Uuid::new_v4());
 
     use_effect(move || async move {
@@ -92,7 +93,7 @@ fn DashboardRoute() -> Element {
 
 #[component]
 fn Payment() -> Element {
-    let session = use_context::<SessionManager>();
+    let session = use_context::<Session>();
     let user_id = use_signal(|| Uuid::new_v4());
 
     use_effect(move || async move {
@@ -112,7 +113,7 @@ fn Payment() -> Element {
 
 #[component]
 fn HistoryRoute() -> Element {
-    let session = use_context::<SessionManager>();
+    let session = use_context::<Session>();
     let user_id = use_signal(|| Uuid::new_v4());
 
     use_effect(move || async move {
@@ -126,7 +127,7 @@ fn HistoryRoute() -> Element {
 
 #[component]
 fn SettingsRoute() -> Element {
-    let session = use_context::<SessionManager>();
+    let session = use_context::<Session>();
     let user_id = use_signal(|| Uuid::new_v4());
 
     use_effect(move || async move {
@@ -140,7 +141,7 @@ fn SettingsRoute() -> Element {
 
 #[component]
 fn LogoutRoute() -> Element {
-    let session = use_context::<SessionManager>();
+    let session = use_context::<Session>();
     let user_id = use_signal(|| Uuid::new_v4());
 
     use_effect(move || async move {
@@ -154,7 +155,7 @@ fn LogoutRoute() -> Element {
 
 #[component]
 fn ProfileRoute() -> Element {
-    let session = use_context::<SessionManager>();
+    let session = use_context::<Session>();
     let user_id = use_signal(|| Uuid::new_v4());
 
     use_effect(move || async move {
