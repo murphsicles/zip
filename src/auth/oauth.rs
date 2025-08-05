@@ -1,18 +1,12 @@
-use oauth2::{AuthorizationCode, CsrfToken, PkceCodeChallenge, Scope};
+use oauth2::{AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope};
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;
 use openidconnect::IdTokenClaims;
-use tokio::sync::oneshot;
 use uuid::Uuid;
 
+use crate::config::env::EnvConfig;
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
-
-const CLIENT_ID: &str = "google-client-id"; // Env var in prod
-const CLIENT_SECRET: &str = "google-client-secret";
-const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
-const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
-const REDIRECT_URI: &str = "zip://oauth/callback"; // Custom scheme for native
 
 pub struct OAuthManager {
     client: BasicClient,
@@ -20,21 +14,24 @@ pub struct OAuthManager {
 }
 
 impl OAuthManager {
-    /// Initializes OAuth client for Google.
+    /// Initializes OAuth client for Google using environment config.
     pub fn new(storage: Arc<ZipStorage>) -> Result<Self, ZipError> {
+        let config = EnvConfig::load()?;
         let client = BasicClient::new(
-            CLIENT_ID.into(),
-            Some(CLIENT_SECRET.into()),
-            AUTH_URL.parse()?,
-            Some(TOKEN_URL.parse()?),
-        ).set_redirect_uri(REDIRECT_URI.parse()?);
+            config.oauth_client_id,
+            Some(config.oauth_client_secret),
+            config.oauth_auth_url.parse()?,
+            Some(config.oauth_token_url.parse()?),
+        )
+        .set_redirect_uri(config.oauth_redirect_uri.parse()?);
         Ok(Self { client, storage })
     }
 
     /// Starts OAuth flow, returns auth URL and CSRF token.
     pub fn start_oauth_flow(&self) -> (String, String) {
         let (pkce_challenge, _) = PkceCodeChallenge::new_random_sha256();
-        let (auth_url, csrf_token) = self.client
+        let (auth_url, csrf_token) = self
+            .client
             .authorize_url(CsrfToken::new_random)
             .add_scope(Scope::new("openid email".to_string()))
             .set_pkce_challenge(pkce_challenge)
@@ -49,19 +46,29 @@ impl OAuthManager {
         pkce_verifier: PkceCodeVerifier,
         csrf_token: String,
     ) -> Result<(Uuid, String), ZipError> {
-        let token = self.client
+        let token = self
+            .client
             .exchange_code(AuthorizationCode::new(code))
             .set_pkce_verifier(pkce_verifier)
             .request_async(async_http_client)
             .await
             .map_err(|e| ZipError::OAuth(Box::new(e)))?;
 
-        let claims: IdTokenClaims = token.id_token().unwrap().claims(&self.client.id_token_verifier(), None)?;
+        let claims: IdTokenClaims = token
+            .id_token()
+            .unwrap()
+            .claims(&self.client.id_token_verifier(), None)?;
         let email = claims.email().unwrap().get(None).unwrap_or("unknown");
 
         let user_id = Uuid::new_v4();
         self.storage.store_user_data(user_id, email.as_bytes())?;
 
         Ok((user_id, email.to_string()))
+    }
+
+    /// Clears session data for logout.
+    pub async fn clear_session(&self, user_id: Uuid) -> Result<(), ZipError> {
+        self.storage.store_user_data(user_id, &[])?;
+        Ok(())
     }
 }
