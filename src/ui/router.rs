@@ -7,7 +7,7 @@ use crate::auth::{AuthManager, SessionManager};
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
-use crate::ui::components::{AuthCallback, AuthForm, Dashboard, History, Home, Logout, NavBar, PaymentForm, Settings, SwipeButton, WalletOverview};
+use crate::ui::components::{Auth, AuthCallback, Dashboard, History, Home, Logout, NavBar, PaymentForm, Settings, SwipeButton, WalletOverview};
 use crate::ui::styles::global_styles;
 use crate::ui::transitions::fade_in;
 
@@ -66,7 +66,7 @@ fn Home() -> Element {
 
 #[component]
 fn Auth() -> Element {
-    fade_in(rsx! { AuthForm {} })
+    fade_in(rsx! { Auth {} })
 }
 
 #[component]
