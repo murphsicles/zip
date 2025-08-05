@@ -3,7 +3,7 @@ use std::error::Error as StdError;
 use crate::config::env::EnvConfig;
 use crate::errors::ZipError;
 use crate::utils::error::format_zip_error;
-use crate::utils::metrics::Metrics;
+use crate::utils::telemetry::Telemetry;
 
 #[cfg(test)]
 mod tests {
@@ -52,8 +52,8 @@ mod tests {
         assert!(format_zip_error(&error).starts_with("Storage error:"));
     }
 
-    #[test]
-    fn test_metrics_auth_event() {
+    #[tokio::test]
+    async fn test_telemetry_auth_event() {
         let config = EnvConfig {
             oauth_client_id: String::new(),
             oauth_client_secret: String::new(),
@@ -63,13 +63,13 @@ mod tests {
             rustbus_endpoint: String::new(),
             log_level: "debug".to_string(),
         };
-        let metrics = Metrics::new(&config);
-        metrics.track_auth_event("user123", "oauth_start", true);
-        // No direct assertion as tracing logs to console, verify via debug output
+        let telemetry = Telemetry::new(&config);
+        let result = telemetry.track_auth_event("user123", "oauth_start", true).await;
+        assert!(result.is_ok());
     }
 
-    #[test]
-    fn test_metrics_payment_event() {
+    #[tokio::test]
+    async fn test_telemetry_payment_event() {
         let config = EnvConfig {
             oauth_client_id: String::new(),
             oauth_client_secret: String::new(),
@@ -79,13 +79,13 @@ mod tests {
             rustbus_endpoint: String::new(),
             log_level: "debug".to_string(),
         };
-        let metrics = Metrics::new(&config);
-        metrics.track_payment_event("user123", "tx456", 1000, true);
-        // No direct assertion as tracing logs to console, verify via debug output
+        let telemetry = Telemetry::new(&config);
+        let result = telemetry.track_payment_event("user123", "tx456", 1000, true).await;
+        assert!(result.is_ok());
     }
 
-    #[test]
-    fn test_metrics_disabled() {
+    #[tokio::test]
+    async fn test_telemetry_disabled() {
         let config = EnvConfig {
             oauth_client_id: String::new(),
             oauth_client_secret: String::new(),
@@ -95,9 +95,24 @@ mod tests {
             rustbus_endpoint: String::new(),
             log_level: "info".to_string(),
         };
-        let metrics = Metrics::new(&config);
-        metrics.track_auth_event("user123", "oauth_start", true);
-        metrics.track_payment_event("user123", "tx456", 1000, true);
-        // No direct assertion as tracing logs are disabled, verify via no output
+        let telemetry = Telemetry::new(&config);
+        let result = telemetry.track_auth_event("user123", "oauth_start", true).await;
+        assert!(result.is_ok());
+        let result = telemetry.track_payment_event("user123", "tx456", 1000, true).await;
+        assert!(result.is_ok());
+        // No direct assertion as telemetry is disabled, verify via no output
+    }
+
+    #[tokio::test]
+    async fn test_telemetry_with_endpoint() {
+        env::set_var("TELEMETRY_ENDPOINT", "http://mock.endpoint");
+        let config = EnvConfig::load().unwrap();
+        let telemetry = Telemetry::new(&config);
+        let result = telemetry.track_auth_event("user123", "oauth_start", true).await;
+        assert!(result.is_ok());
+        let result = telemetry.track_payment_event("user123", "tx456", 1000, true).await;
+        assert!(result.is_ok());
+        // Verify via mock endpoint (wiremock in full test)
+        env::remove_var("TELEMETRY_ENDPOINT");
     }
 }
