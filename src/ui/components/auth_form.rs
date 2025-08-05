@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::auth::{OAuthManager, PasskeyManager};
 use crate::errors::ZipError;
-use crate::ui::components::ErrorDisplay;
+use crate::ui::components::{ErrorDisplay, Loading, Notification};
 use crate::ui::styles::global_styles;
 
 #[component]
@@ -14,6 +14,7 @@ pub fn AuthForm() -> Element {
     let user_id = use_signal(|| Uuid::new_v4());
     let totp_code = use_signal(|| String::new());
     let error = use_signal(|| None::<ZipError>);
+    let notification = use_signal(|| None::<String>);
     let is_loading = use_signal(|| false);
     let animated = use_animated(|style| style.opacity(1.0).duration(0.5));
 
@@ -21,7 +22,8 @@ pub fn AuthForm() -> Element {
         is_loading.set(true);
         let (url, _) = oauth.start_oauth_flow();
         // Open url in system browser or embedded view
-        // Handle callback in router
+        // Assume callback handled in router
+        notification.set(Some("Redirecting to OAuth provider".to_string()));
         is_loading.set(false);
     };
 
@@ -33,6 +35,7 @@ pub fn AuthForm() -> Element {
                 let cred = PublicKeyCredential::default(); // Placeholder
                 match passkey.complete_authentication(cred, state) {
                     Ok(_) => {
+                        notification.set(Some("Login successful".to_string()));
                         use_router().push(Route::DashboardRoute);
                     }
                     Err(e) => error.set(Some(e)),
@@ -58,8 +61,9 @@ pub fn AuthForm() -> Element {
             }
             button { onclick: on_passkey_login, disabled: *is_loading.read(), "Login with Passkey" }
             ErrorDisplay { error: *error.read() }
+            Notification { message: *notification.read(), is_success: true }
             if *is_loading.read() {
-                div { class: "loading", style: "color: #666; font-size: 0.9em;", "Loading..." }
+                Loading { message: "Processing authentication".to_string() }
             }
         }
     }
