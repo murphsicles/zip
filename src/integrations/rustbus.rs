@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
+use crate::config::EnvConfig;
 use crate::errors::ZipError;
 
 #[derive(Serialize, Deserialize)]
@@ -20,9 +21,10 @@ pub struct RustBusIntegrator {
 }
 
 impl RustBusIntegrator {
-    /// Initializes RustBus client with endpoint.
-    pub fn new(endpoint: &str) -> Result<Self, ZipError> {
-        let client = Client::new(endpoint).map_err(|e| ZipError::Blockchain(e.to_string()))?;
+    /// Initializes RustBus client with endpoint from environment config.
+    pub fn new() -> Result<Self, ZipError> {
+        let config = EnvConfig::load()?;
+        let client = Client::new(&config.rustbus_endpoint).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         Ok(Self {
             client: Mutex::new(client),
         })
