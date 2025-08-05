@@ -2,10 +2,11 @@ use std::collections::HashMap;
 use tokio::runtime::Runtime;
 use uuid::Uuid;
 
-use crate::auth::{AuthManager, OAuthManager, PasskeyManager, SessionManager};
-use crate::config::Config;
+use crate::auth::{AuthManager, OAuthManager, PasskeyManager};
+use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
+use crate::utils::session::Session;
 
 #[cfg(test)]
 mod tests {
@@ -36,20 +37,38 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_oauth_complete_flow_with_invalid_email() {
+        let storage = Arc::new(ZipStorage::new().unwrap());
+        let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
+        // Mock OAuth callback with invalid email
+        let code = "mock_code".to_string();
+        let pkce_verifier = PkceCodeVerifier::new("mock_verifier".to_string());
+        let csrf = "mock_csrf".to_string();
+        // Simulate OAuth response with invalid email
+        let invalid_email = "invalid_email<script>";
+        let result = auth.oauth.complete_oauth_flow(code, pkce_verifier, csrf).await;
+        if let Ok((user_id, email)) = result {
+            let result = auth.complete_oauth(email, PkceCodeVerifier::new("mock_verifier".to_string()), "mock_csrf".to_string()).await;
+            assert!(matches!(result, Err(ZipError::Validation(_))));
+            assert!(!auth.is_authenticated(user_id).await);
+        }
+    }
+
+    #[tokio::test]
     async fn test_oauth_clear_session() {
         let storage = Arc::new(ZipStorage::new().unwrap());
         let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
         let user_id = Uuid::new_v4();
-        // Store some data
+        // Store session
         auth.session
-            .create_session(user_id, "test@example.com".to_string())
+            .create(user_id, "test@example.com".to_string())
             .await
             .unwrap();
         assert!(auth.is_authenticated(user_id).await);
         // Clear session
         auth.logout(user_id).await.unwrap();
         assert!(!auth.is_authenticated(user_id).await);
-        assert!(auth.session.get_session(user_id).await.unwrap().is_none());
+        assert!(auth.session.get(user_id).await.unwrap().is_none());
     }
 
     #[test]
@@ -78,6 +97,23 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_passkey_authentication_with_invalid_email() {
+        let storage = Arc::new(ZipStorage::new().unwrap());
+        let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
+        let user_id = Uuid::new_v4();
+        let (challenge, state) = auth.passkey.start_registration(user_id, "test_user").unwrap();
+        let cred = CreationPublicKeyCredential::default();
+        let reg = auth.passkey.complete_registration(cred, state).unwrap();
+        let (auth_challenge, auth_state) = auth.start_passkey_authentication(user_id, Some("123456")).await.unwrap();
+        // Simulate session with invalid email
+        auth.session.create(user_id, "invalid_email<script>".to_string()).await.unwrap();
+        let auth_cred = PublicKeyCredential::default();
+        let result = auth.complete_passkey_authentication(user_id, auth_cred, auth_state).await;
+        assert!(matches!(result, Err(ZipError::Validation(_))));
+        assert!(auth.is_authenticated(user_id).await);
+    }
+
+    #[tokio::test]
     async fn test_passkey_2fa_authentication() {
         let storage = Arc::new(ZipStorage::new().unwrap());
         let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
@@ -101,18 +137,18 @@ mod tests {
     #[tokio::test]
     async fn test_session_management() {
         let storage = Arc::new(ZipStorage::new().unwrap());
-        let session = SessionManager::new(Arc::clone(&storage));
+        let session = Session::new(Arc::clone(&storage)).unwrap();
         let user_id = Uuid::new_v4();
 
         // Test unauthenticated state
         assert!(!session.is_authenticated(user_id).await);
 
-        // Create session
+        // Create session with valid email
         session
-            .create_session(user_id, "test@example.com".to_string())
+            .create(user_id, "test@example.com".to_string())
             .await
             .unwrap();
-        let session_data = session.get_session(user_id).await.unwrap().unwrap();
+        let session_data = session.get(user_id).await.unwrap().unwrap();
         assert!(session_data.is_authenticated);
         assert_eq!(session_data.email, "test@example.com");
 
@@ -120,8 +156,8 @@ mod tests {
         assert!(session.is_authenticated(user_id).await);
 
         // Clear session
-        session.clear_session(user_id).await.unwrap();
+        session.clear(user_id).await.unwrap();
         assert!(!session.is_authenticated(user_id).await);
-        assert!(session.get_session(user_id).await.unwrap().is_none());
+        assert!(session.get(user_id).await.unwrap().is_none());
     }
 }
