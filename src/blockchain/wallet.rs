@@ -13,6 +13,7 @@ use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
 use crate::utils::cache::Cache;
 use crate::utils::crypto::Crypto;
+use crate::utils::rate_limiter::RateLimiter;
 use crate::utils::telemetry::Telemetry;
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -32,6 +33,7 @@ pub struct WalletManager {
     derivation_index: RwLock<u32>,
     price_cache: Arc<Cache<String, Decimal>>,
     telemetry: Telemetry,
+    rate_limiter: RateLimiter,
 }
 
 impl WalletManager {
@@ -59,6 +61,7 @@ impl WalletManager {
             derivation_index: RwLock::new(0),
             price_cache: Arc::new(Cache::new(300)), // 5min TTL
             telemetry: Telemetry::new(&config),
+            rate_limiter: RateLimiter::new(5, 60), // 5 payments per minute
         })
     }
 
@@ -119,6 +122,7 @@ impl WalletManager {
 
     /// Updates and caches balance in satoshis and converted currency.
     pub async fn update_balance(&self, user_id: Uuid, currency: &str) -> Result<(u64, Decimal), ZipError> {
+        self.rate_limiter.check(&user_id.to_string()).await?;
         let address = self.get_address()?;
         let balance = if let Some(r) = &self.rustbus {
             r.query_balance(&address).await?
@@ -149,6 +153,7 @@ impl WalletManager {
         amount: u64,
         fee: u64,
     ) -> Result<String, ZipError> {
+        self.rate_limiter.check(&user_id.to_string()).await?;
         let result = self.tx_manager.build_payment_tx(user_id, recipient_script, amount, fee).await;
         let success = result.is_ok();
         let tx_id = match &result {
