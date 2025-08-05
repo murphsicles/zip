@@ -14,6 +14,8 @@ pub fn NavBar() -> Element {
             Link { to: Route::Payment, class: "nav-link", "Send" }
             Link { to: Route::HistoryRoute, class: "nav-link", "History" }
             Link { to: Route::SettingsRoute, class: "nav-link", "Settings" }
+            Link { to: Route::ProfileRoute, class: "nav-link", "Profile" }
+            Link { to: Route::LogoutRoute, class: "nav-link", "Logout" }
         }
     }
 }
