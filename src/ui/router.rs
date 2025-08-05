@@ -7,7 +7,7 @@ use crate::auth::{OAuthManager, PasskeyManager};
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
-use crate::ui::components::{AuthCallback, AuthForm, Dashboard, History, NavBar, PaymentForm, Settings, SwipeButton, WalletOverview};
+use crate::ui::components::{AuthCallback, AuthForm, Dashboard, History, Logout, NavBar, PaymentForm, Settings, SwipeButton, WalletOverview};
 use crate::ui::styles::global_styles;
 use crate::ui::transitions::{fade_in, slide_right};
 
@@ -27,6 +27,8 @@ pub enum Route {
     HistoryRoute,
     #[route("/settings")]
     SettingsRoute,
+    #[route("/logout")]
+    LogoutRoute,
 }
 
 #[component]
@@ -65,6 +67,7 @@ fn Home() -> Element {
         Link { to: Route::Payment, class: "nav-link", "Make a Payment" }
         Link { to: Route::History, class: "nav-link", "View History" }
         Link { to: Route::Settings, class: "nav-link", "Settings" }
+        Link { to: Route::Logout, class: "nav-link", "Logout" }
     })
 }
 
@@ -102,4 +105,9 @@ fn HistoryRoute() -> Element {
 #[component]
 fn SettingsRoute() -> Element {
     fade_in(rsx! { Settings {} })
+}
+
+#[component]
+fn LogoutRoute() -> Element {
+    fade_in(rsx! { Logout {} })
 }
