@@ -61,13 +61,26 @@ pub fn AppRouter() -> Element {
 
 #[component]
 fn Home() -> Element {
+    let oauth = use_context::<OAuthManager>();
+    let is_authenticated = use_signal(|| false); // Placeholder for auth state
+
+    use_effect(move || async move {
+        // Check if user data exists to determine auth state
+        let user_id = Uuid::new_v4();
+        if oauth.storage.get_user_data(user_id).unwrap().is_some() {
+            is_authenticated.set(true);
+        }
+    });
+
     slide_right(rsx! {
         h1 { class: "title", "Zip Wallet" }
         Link { to: Route::Auth, class: "nav-link", "Sign Up / Login" }
         Link { to: Route::Payment, class: "nav-link", "Make a Payment" }
         Link { to: Route::History, class: "nav-link", "View History" }
         Link { to: Route::Settings, class: "nav-link", "Settings" }
-        Link { to: Route::Logout, class: "nav-link", "Logout" }
+        if *is_authenticated.read() {
+            Link { to: Route::Logout, class: "nav-link", "Logout" }
+        }
     })
 }
 
