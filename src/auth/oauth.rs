@@ -4,7 +4,7 @@ use oauth2::reqwest::async_http_client;
 use openidconnect::IdTokenClaims;
 use uuid::Uuid;
 
-use crate::config::env::EnvConfig;
+use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
 
