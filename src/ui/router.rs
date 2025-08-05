@@ -7,7 +7,7 @@ use crate::auth::{OAuthManager, PasskeyManager};
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
-use crate::ui::components::{AuthForm, Dashboard, History, PaymentForm, Settings, SwipeButton, WalletOverview};
+use crate::ui::components::{AuthForm, Dashboard, History, NavBar, PaymentForm, Settings, SwipeButton, WalletOverview};
 use crate::ui::styles::global_styles;
 use crate::ui::transitions::{fade_in, slide_right};
 
@@ -44,8 +44,11 @@ pub fn AppRouter() -> Element {
                 },
                 div {
                     class: "app-container",
-                    style: "{global_styles()}",
-                    RouteRenderer {}
+                    style: "{global_styles()} .app-container { display: flex; flex-direction: column; min-height: 100vh; } .content { flex: 1; padding: 20px; }",
+                    NavBar {}
+                    div { class: "content",
+                        RouteRenderer {}
+                    }
                 }
             }
         }
@@ -56,10 +59,10 @@ pub fn AppRouter() -> Element {
 fn Home() -> Element {
     slide_right(rsx! {
         h1 { class: "title", "Zip Wallet" }
-        Link { to: Route::Auth, "Sign Up / Login" }
-        Link { to: Route::Payment, "Make a Payment" }
-        Link { to: Route::History, "View History" }
-        Link { to: Route::Settings, "Settings" }
+        Link { to: Route::Auth, class: "nav-link", "Sign Up / Login" }
+        Link { to: Route::Payment, class: "nav-link", "Make a Payment" }
+        Link { to: Route::History, class: "nav-link", "View History" }
+        Link { to: Route::Settings, class: "nav-link", "Settings" }
     })
 }
 
