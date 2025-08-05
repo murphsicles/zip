@@ -8,7 +8,7 @@ use crate::auth::PasskeyManager;
 use crate::blockchain::{PaymailManager, WalletManager};
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
-use crate::ui::components::{ErrorDisplay, SwipeButton};
+use crate::ui::components::{ErrorDisplay, Notification, SwipeButton};
 use crate::ui::styles::global_styles;
 
 #[component]
@@ -28,6 +28,7 @@ pub fn Settings() -> Element {
     let two_fa_code = use_signal(|| String::new());
     let qr_code = use_signal(|| String::new());
     let error = use_signal(|| None::<ZipError>);
+    let notification = use_signal(|| None::<String>);
 
     use_effect(move || async move {
         // Load preferences
@@ -51,9 +52,10 @@ pub fn Settings() -> Element {
             match paymail.create_default_alias(*user_id.read(), None).await {
                 Ok((alias, _)) => {
                     let mut aliases = paymail_aliases.read().clone();
-                    aliases.insert(alias);
+                    aliases.insert(alias.clone());
                     paymail_aliases.set(aliases);
                     primary_paymail.set("101@zip.io".to_string());
+                    notification.set(Some(format!("Default PayMail assigned: {}", alias)));
                 }
                 Err(e) => error.set(Some(e)),
             }
@@ -70,6 +72,7 @@ pub fn Settings() -> Element {
         }
         let serialized = bincode::serialize(&prefs).unwrap();
         storage.store_user_data(*user_id.read(), &serialized).unwrap();
+        notification.set(Some("Currency updated".to_string()));
     };
 
     let on_new_alias = move |evt: Event<FormData>| {
@@ -109,10 +112,11 @@ pub fn Settings() -> Element {
                     Ok(_) => {
                         if paymail.confirm_alias(*user_id.read(), &alias).await.is_ok() {
                             let mut aliases = paymail_aliases.read().clone();
-                            aliases.insert(alias);
+                            aliases.insert(alias.clone());
                             paymail_aliases.set(aliases);
                             new_alias.set(String::new());
                             alias_price.set(Decimal::ZERO);
+                            notification.set(Some(format!("Alias purchased: {}", alias)));
                         } else {
                             error.set(Some(ZipError::Blockchain("Failed to confirm alias".to_string())));
                         }
@@ -135,7 +139,8 @@ pub fn Settings() -> Element {
                     }
                 }
             }
-            primary_paymail.set(alias);
+            primary_paymail.set(alias.clone());
+            notification.set(Some(format!("Primary PayMail set: {}", alias)));
         });
     };
 
@@ -144,6 +149,7 @@ pub fn Settings() -> Element {
             two_fa_enabled.set(false);
             two_fa_secret.set(None);
             storage.store_user_data(*user_id.read(), b"").unwrap();
+            notification.set(Some("2FA disabled".to_string()));
         } else {
             let secret = Secret::Raw(generate_salt(20));
             let totp = TOTP::new(
@@ -158,6 +164,7 @@ pub fn Settings() -> Element {
             .unwrap();
             qr_code.set(totp.get_qr().unwrap());
             two_fa_secret.set(Some(totp.secret_base32().unwrap()));
+            notification.set(Some("2FA setup initiated".to_string()));
         }
     };
 
@@ -173,6 +180,7 @@ pub fn Settings() -> Element {
                 storage.store_user_data(*user_id.read(), &serialized).unwrap();
                 two_fa_secret.set(None);
                 qr_code.set(String::new());
+                notification.set(Some("2FA enabled".to_string()));
             } else {
                 error.set(Some(ZipError::Auth("Invalid 2FA code".to_string())));
             }
@@ -222,6 +230,7 @@ pub fn Settings() -> Element {
                 }
             }
             ErrorDisplay { error: *error.read() }
+            Notification { message: *notification.read(), is_success: true }
         }
     }
-        }
+}
