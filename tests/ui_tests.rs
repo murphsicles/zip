@@ -7,7 +7,7 @@ use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::config::Config;
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
-use crate::ui::components::{AuthForm, Dashboard, History, NavBar, PaymentForm, Settings, WalletOverview};
+use crate::ui::components::{AuthForm, Dashboard, History, Logout, NavBar, PaymentForm, Settings, WalletOverview};
 use crate::ui::router::AppRouter;
 
 #[cfg(test)]
@@ -147,5 +147,18 @@ mod tests {
         assert!(html.contains("Send"));
         assert!(html.contains("History"));
         assert!(html.contains("Settings"));
+    }
+
+    #[tokio::test]
+    async fn test_logout_render() {
+        let storage = Arc::new(ZipStorage::new().unwrap());
+        let oauth = OAuthManager::new(Arc::clone(&storage)).unwrap();
+        let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
+
+        let app = VirtualDom::new_with_props(AppRouter, |c| {
+            c.with_context(oauth).with_context(passkey)
+        });
+        let html = app.render_to_string();
+        assert!(html.contains("Confirm Logout"));
     }
 }
