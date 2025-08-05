@@ -15,7 +15,7 @@ use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
-use crate::utils::metrics::Metrics;
+use crate::utils::telemetry::Telemetry;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct WalletData {
@@ -33,7 +33,7 @@ pub struct WalletManager {
     hd_key: RwLock<ExtendedPrivateKey>,
     derivation_index: RwLock<u32>,
     price_cache: RwLock<HashMap<String, Decimal>>,
-    metrics: Metrics,
+    telemetry: Telemetry,
 }
 
 impl WalletManager {
@@ -59,7 +59,7 @@ impl WalletManager {
             hd_key: RwLock::new(hd_key),
             derivation_index: RwLock::new(0),
             price_cache: RwLock::new(HashMap::new()),
-            metrics: Metrics::new(&config),
+            telemetry: Telemetry::new(&config),
         })
     }
 
@@ -87,8 +87,9 @@ impl WalletManager {
             derivation_path: format!("m/44'/0'/0'/0/{}", index),
         };
         let serialized = bincode::serialize(&data).map_err(|e| ZipError::Blockchain(e.to_string()))?;
-        self.storage.store_user_data(Uuid::new_v4(), &serialized)?;
-        self.metrics.track_payment_event(&Uuid::new_v4().to_string(), "address_generated", 0, true);
+        let user_id = Uuid::new_v4();
+        self.storage.store_user_data(user_id, &serialized)?;
+        let _ = self.telemetry.track_payment_event(&user_id.to_string(), "address_generated", 0, true).await;
         Ok(address)
     }
 
@@ -149,7 +150,7 @@ impl WalletManager {
         };
         let serialized = bincode::serialize(&data).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
-        self.metrics.track_payment_event(&user_id.to_string(), "balance_update", balance, true);
+        let _ = self.telemetry.track_payment_event(&user_id.to_string(), "balance_update", balance, true).await;
         Ok((balance, balance_converted))
     }
 
@@ -162,11 +163,12 @@ impl WalletManager {
         fee: u64,
     ) -> Result<String, ZipError> {
         let result = self.tx_manager.build_payment_tx(user_id, recipient_script, amount, fee).await;
+        let success = result.is_ok();
         let tx_id = match &result {
             Ok(tx) => tx.to_hex()?,
             Err(_) => "".to_string(),
         };
-        self.metrics.track_payment_event(&user_id.to_string(), &tx_id, amount, result.is_ok());
+        let _ = self.telemetry.track_payment_event(&user_id.to_string(), &tx_id, amount, success).await;
         result
     }
-            }
+}
