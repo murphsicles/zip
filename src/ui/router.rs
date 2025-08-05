@@ -7,9 +7,9 @@ use crate::auth::{OAuthManager, PasskeyManager, SessionManager};
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
-use crate::ui::components::{AuthCallback, AuthForm, Dashboard, History, Logout, NavBar, PaymentForm, Settings, SwipeButton, WalletOverview};
+use crate::ui::components::{AuthCallback, AuthForm, Dashboard, History, Home, Logout, NavBar, PaymentForm, Settings, SwipeButton, WalletOverview};
 use crate::ui::styles::global_styles;
-use crate::ui::transitions::{fade_in, slide_right};
+use crate::ui::transitions::fade_in;
 
 #[derive(Routable, Clone)]
 pub enum Route {
@@ -62,26 +62,7 @@ pub fn AppRouter() -> Element {
 
 #[component]
 fn Home() -> Element {
-    let session = use_context::<SessionManager>();
-    let is_authenticated = use_signal(|| false);
-    let user_id = use_signal(|| Uuid::new_v4());
-
-    use_effect(move || async move {
-        is_authenticated.set(session.is_authenticated(*user_id.read()).await);
-    });
-
-    slide_right(rsx! {
-        h1 { class: "title", "Zip Wallet" }
-        if *is_authenticated.read() {
-            Link { to: Route::DashboardRoute, class: "nav-link", "Wallet" }
-            Link { to: Route::Payment, class: "nav-link", "Send" }
-            Link { to: Route::HistoryRoute, class: "nav-link", "History" }
-            Link { to: Route::SettingsRoute, class: "nav-link", "Settings" }
-            Link { to: Route::LogoutRoute, class: "nav-link", "Logout" }
-        } else {
-            Link { to: Route::Auth, class: "nav-link", "Sign Up / Login" }
-        }
-    })
+    fade_in(rsx! { Home {} })
 }
 
 #[component]
