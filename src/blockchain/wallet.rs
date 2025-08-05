@@ -5,17 +5,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use rust_sv::address::{addr_encode, AddressType};
 use rust_sv::bip32::{ChildNumber, ExtendedPrivateKey};
-use rust_sv::private_key::PrivateKey;
-use rust_sv::public_key::PublicKey;
-use rust_sv::util::hash160;
 
 use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
 use crate::utils::cache::Cache;
+use crate::utils::crypto::Crypto;
 use crate::utils::telemetry::Telemetry;
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -46,7 +43,8 @@ impl WalletManager {
     ) -> Result<Self, ZipError> {
         let config = EnvConfig::load()?;
         let priv_key_bytes = storage.get_private_key().unwrap_or_else(|_| {
-            let seed = generate_salt(64);
+            let private_key = Crypto::generate_private_key()?;
+            let seed = private_key.to_bytes();
             let hd_key = ExtendedPrivateKey::new_seed(&seed, rust_sv::network::Network::Mainnet)?;
             let bytes = Secret::new(hd_key.to_bytes());
             storage.store_private_key(bytes).unwrap();
@@ -75,9 +73,8 @@ impl WalletManager {
             .hd_key
             .read()
             .derive_private_key(&[ChildNumber::Normal { index }])?;
-        let pubkey = child_key.public_key();
-        let pubkey_hash = hash160(pubkey.to_bytes());
-        let address = addr_encode(&pubkey_hash, AddressType::P2PKH, rust_sv::network::Network::Mainnet);
+        let pubkey = Crypto::derive_public_key(&child_key);
+        let address = Crypto::generate_address(&pubkey);
 
         // Store derivation path
         let data = WalletData {
