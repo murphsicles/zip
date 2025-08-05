@@ -10,6 +10,7 @@ use crate::storage::ZipStorage;
 use crate::ui::components::{ErrorDisplay, Notification, SwipeButton, Theme, ThemeProvider, ThemeSwitcher};
 use crate::ui::styles::global_styles;
 use crate::utils::auth::AuthUtils;
+use crate::utils::validation::Validation;
 
 #[component]
 pub fn Settings() -> Element {
@@ -37,7 +38,10 @@ pub fn Settings() -> Element {
         // Load preferences
         if let Some(data) = storage.get_user_data(*user_id.read()).unwrap_or_default() {
             let prefs: HashMap<String, String> = bincode::deserialize(&data).unwrap_or_default();
-            selected_currency.set(prefs.get("currency").cloned().unwrap_or("USD".to_string()));
+            let currency = prefs.get("currency").cloned().unwrap_or("USD".to_string());
+            if Validation::validate_currency(&currency).is_ok() {
+                selected_currency.set(currency);
+            }
             selected_theme.set(
                 prefs.get("theme")
                     .map(|t| if t == "dark" { Theme::Dark } else { Theme::Light })
@@ -72,22 +76,26 @@ pub fn Settings() -> Element {
 
     let on_currency_change = move |evt: Event<FormData>| {
         let new_currency = evt.value.clone();
-        selected_currency.set(new_currency.clone());
-        let mut prefs = HashMap::new();
-        prefs.insert("currency".to_string(), new_currency);
-        if let Some(secret) = two_fa_secret.read().as_ref() {
-            prefs.insert("2fa_enabled".to_string(), secret.clone());
+        if Validation::validate_currency(&new_currency).is_ok() {
+            selected_currency.set(new_currency.clone());
+            let mut prefs = HashMap::new();
+            prefs.insert("currency".to_string(), new_currency);
+            if let Some(secret) = two_fa_secret.read().as_ref() {
+                prefs.insert("2fa_enabled".to_string(), secret.clone());
+            }
+            prefs.insert(
+                "theme".to_string(),
+                match *selected_theme.read() {
+                    Theme::Light => "light".to_string(),
+                    Theme::Dark => "dark".to_string(),
+                },
+            );
+            let serialized = bincode::serialize(&prefs).unwrap();
+            storage.store_user_data(*user_id.read(), &serialized).unwrap();
+            notification.set(Some("Currency updated".to_string()));
+        } else {
+            error.set(Some(ZipError::Validation("Invalid currency code".to_string())));
         }
-        prefs.insert(
-            "theme".to_string(),
-            match *selected_theme.read() {
-                Theme::Light => "light".to_string(),
-                Theme::Dark => "dark".to_string(),
-            },
-        );
-        let serialized = bincode::serialize(&prefs).unwrap();
-        storage.store_user_data(*user_id.read(), &serialized).unwrap();
-        notification.set(Some("Currency updated".to_string()));
     };
 
     let on_theme_change = move |new_theme: Theme| {
@@ -112,10 +120,14 @@ pub fn Settings() -> Element {
     let on_new_alias = move |evt: Event<FormData>| {
         spawn(async move {
             let prefix = evt.value;
-            new_alias.set(prefix.clone());
-            match paymail.create_paid_alias(*user_id.read(), &prefix).await {
-                Ok((_, price)) => alias_price.set(price),
-                Err(e) => error.set(Some(e)),
+            if Validation::validate_paymail_prefix(&prefix).is_ok() {
+                new_alias.set(prefix.clone());
+                match paymail.create_paid_alias(*user_id.read(), &prefix).await {
+                    Ok((_, price)) => alias_price.set(price),
+                    Err(e) => error.set(Some(e)),
+                }
+            } else {
+                error.set(Some(ZipError::Validation("PayMail prefix must be 5 or more digits".to_string())));
             }
         });
     };
@@ -140,6 +152,13 @@ pub fn Settings() -> Element {
         let satoshis = (price * Decimal::from(100_000_000) / wallet.fetch_price(&selected_currency.read()).await.unwrap_or(Decimal::ONE))
             .to_u64()
             .unwrap_or(0);
+        match Validation::validate_amount(satoshis) {
+            Ok(()) => {}
+            Err(e) => {
+                error.set(Some(e));
+                return;
+            }
+        }
         match paymail.resolve_paymail("000@zip.io", satoshis).await {
             Ok((script, _)) => {
                 match wallet.send_payment(*user_id.read(), script, satoshis, 1000).await {
@@ -283,4 +302,4 @@ pub fn Settings() -> Element {
             }
         }
     }
-}
+                     }
