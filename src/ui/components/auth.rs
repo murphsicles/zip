@@ -7,11 +7,13 @@ use crate::auth::AuthManager;
 use crate::errors::ZipError;
 use crate::ui::components::{ErrorDisplay, Loading, Notification};
 use crate::ui::styles::global_styles;
+use crate::utils::security::Security;
 
 #[component]
 pub fn Auth() -> Element {
     let auth = use_context::<AuthManager>();
     let user_id = use_signal(|| Uuid::new_v4());
+    let email = use_signal(|| String::new());
     let totp_code = use_signal(|| String::new());
     let error = use_signal(|| None::<ZipError>);
     let notification = use_signal(|| None::<String>);
@@ -28,6 +30,19 @@ pub fn Auth() -> Element {
 
     let on_passkey_login = move |_| async move {
         is_loading.set(true);
+        let sanitized_email = match Security::sanitize_input(&email.read()) {
+            Ok(sanitized) => sanitized,
+            Err(e) => {
+                error.set(Some(e));
+                is_loading.set(false);
+                return;
+            }
+        };
+        if Security::validate_email(&sanitized_email).is_err() {
+            error.set(Some(ZipError::Validation("Invalid email format".to_string())));
+            is_loading.set(false);
+            return;
+        }
         match auth.start_passkey_authentication(*user_id.read(), Some(&totp_code.read())).await {
             Ok((challenge, state)) => {
                 // Prompt biometric and complete
@@ -48,10 +63,16 @@ pub fn Auth() -> Element {
     rsx! {
         div {
             class: "auth",
-            style: "{global_styles()} .auth { display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 10px; max-width: 400px; margin: auto; }",
+            style: "{global_styles()}",
             style: "{animated}",
             h2 { class: "title", "Sign Up / Login" }
             button { onclick: on_oauth_signup, disabled: *is_loading.read(), "Sign Up with OAuth" }
+            input {
+                r#type: "text",
+                placeholder: "Email",
+                oninput: move |evt| email.set(evt.value),
+                disabled: *is_loading.read()
+            }
             input {
                 r#type: "text",
                 placeholder: "2FA Code (if enabled)",
