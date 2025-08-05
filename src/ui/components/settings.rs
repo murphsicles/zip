@@ -4,11 +4,11 @@ use std::collections::{HashMap, HashSet};
 use totp_rs::{Algorithm, Secret, TOTP};
 use uuid::Uuid;
 
-use crate::auth::PasskeyManager;
+use crate::auth::AuthManager;
 use crate::blockchain::{PaymailManager, WalletManager};
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
-use crate::ui::components::{ErrorDisplay, Notification, SwipeButton};
+use crate::ui::components::{ErrorDisplay, Notification, SwipeButton, Theme, ThemeProvider};
 use crate::ui::styles::global_styles;
 
 #[component]
@@ -16,9 +16,11 @@ pub fn Settings() -> Element {
     let storage = use_context::<ZipStorage>();
     let paymail = use_context::<PaymailManager>();
     let wallet = use_context::<WalletManager>();
+    let auth = use_context::<AuthManager>();
     let user_id = use_signal(|| Uuid::new_v4());
     let currencies = ["USD", "GBP", "EUR", "JPY", "CAD", "AUD", "CHF", "CNY", "SEK", "NZD"];
     let selected_currency = use_signal(|| "USD".to_string());
+    let selected_theme = use_signal(|| Theme::Light);
     let paymail_aliases = use_signal(|| HashSet::new());
     let primary_paymail = use_signal(|| String::new());
     let new_alias = use_signal(|| String::new());
@@ -35,6 +37,11 @@ pub fn Settings() -> Element {
         if let Some(data) = storage.get_user_data(*user_id.read()).unwrap_or_default() {
             let prefs: HashMap<String, String> = bincode::deserialize(&data).unwrap_or_default();
             selected_currency.set(prefs.get("currency").cloned().unwrap_or("USD".to_string()));
+            selected_theme.set(
+                prefs.get("theme")
+                    .map(|t| if t == "dark" { Theme::Dark } else { Theme::Light })
+                    .unwrap_or(Theme::Light),
+            );
             two_fa_enabled.set(prefs.get("2fa_enabled").is_some());
         }
         // Load PayMail aliases
@@ -70,9 +77,39 @@ pub fn Settings() -> Element {
         if let Some(secret) = two_fa_secret.read().as_ref() {
             prefs.insert("2fa_enabled".to_string(), secret.clone());
         }
+        prefs.insert(
+            "theme".to_string(),
+            match *selected_theme.read() {
+                Theme::Light => "light".to_string(),
+                Theme::Dark => "dark".to_string(),
+            },
+        );
         let serialized = bincode::serialize(&prefs).unwrap();
         storage.store_user_data(*user_id.read(), &serialized).unwrap();
         notification.set(Some("Currency updated".to_string()));
+    };
+
+    let on_theme_change = move |evt: Event<FormData>| {
+        let new_theme = match evt.value.as_str() {
+            "dark" => Theme::Dark,
+            _ => Theme::Light,
+        };
+        selected_theme.set(new_theme);
+        let mut prefs = HashMap::new();
+        prefs.insert("currency".to_string(), selected_currency.read().clone());
+        if let Some(secret) = two_fa_secret.read().as_ref() {
+            prefs.insert("2fa_enabled".to_string(), secret.clone());
+        }
+        prefs.insert(
+            "theme".to_string(),
+            match new_theme {
+                Theme::Light => "light".to_string(),
+                Theme::Dark => "dark".to_string(),
+            },
+        );
+        let serialized = bincode::serialize(&prefs).unwrap();
+        storage.store_user_data(*user_id.read(), &serialized).unwrap();
+        notification.set(Some("Theme updated".to_string()));
     };
 
     let on_new_alias = move |evt: Event<FormData>| {
@@ -176,6 +213,13 @@ pub fn Settings() -> Element {
                 let mut prefs = HashMap::new();
                 prefs.insert("currency".to_string(), selected_currency.read().clone());
                 prefs.insert("2fa_enabled".to_string(), secret.clone());
+                prefs.insert(
+                    "theme".to_string(),
+                    match *selected_theme.read() {
+                        Theme::Light => "light".to_string(),
+                        Theme::Dark => "dark".to_string(),
+                    },
+                );
                 let serialized = bincode::serialize(&prefs).unwrap();
                 storage.store_user_data(*user_id.read(), &serialized).unwrap();
                 two_fa_secret.set(None);
@@ -188,49 +232,58 @@ pub fn Settings() -> Element {
     };
 
     rsx! {
-        div {
-            class: "settings-page",
-            style: "{global_styles()} .settings-page { display: flex; flex-direction: column; gap: 20px; padding: 20px; } .section { border: 1px solid #ddd; padding: 15px; border-radius: 8px; } .paymail-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; } .alias-input { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }",
-            div { class: "section",
-                h3 { "Default Currency" }
-                select { onchange: on_currency_change,
-                    for curr in currencies.iter() {
-                        option { selected: *curr == *selected_currency.read(), "{curr}" }
-                    }
-                }
-            }
-            div { class: "section",
-                h3 { "PayMail Addresses" }
-                div { class: "paymail-list",
-                    for alias in paymail_aliases.read().iter() {
-                        label {
-                            input { r#type: "radio", name: "primary_paymail", checked: *alias == *primary_paymail.read(), onclick: move |_| on_primary_paymail_change(alias.clone()) }
-                            "{alias} {if *alias == *primary_paymail.read() { '(Primary)' } else { '' }}"
+        ThemeProvider { theme: *selected_theme.read(),
+            div {
+                class: "settings-page",
+                style: "{global_styles()} .settings-page { display: flex; flex-direction: column; gap: 20px; padding: 20px; } .section { border: 1px solid; padding: 15px; border-radius: 8px; } .paymail-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; } .alias-input { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }",
+                div { class: "section",
+                    h3 { "Default Currency" }
+                    select { onchange: on_currency_change,
+                        for curr in currencies.iter() {
+                            option { selected: *curr == *selected_currency.read(), "{curr}" }
                         }
                     }
-                    div { class: "alias-input",
-                        input { r#type: "text", placeholder: "New alias prefix (5+ digits)", oninput: on_new_alias }
-                        if alias_price.read() > Decimal::ZERO {
-                            SwipeButton {
-                                recipient: "000@zip.io",
-                                amount: (alias_price.read() * Decimal::from(100_000_000) / wallet.fetch_price(&selected_currency.read()).await.unwrap_or(Decimal::ONE)).to_u64().unwrap_or(0),
-                                "Pay {alias_price} {selected_currency} for {new_alias}@zip.io"
+                }
+                div { class: "section",
+                    h3 { "Theme" }
+                    select { onchange: on_theme_change,
+                        option { value: "light", selected: *selected_theme.read() == Theme::Light, "Light" }
+                        option { value: "dark", selected: *selected_theme.read() == Theme::Dark, "Dark" }
+                    }
+                }
+                div { class: "section",
+                    h3 { "PayMail Addresses" }
+                    div { class: "paymail-list",
+                        for alias in paymail_aliases.read().iter() {
+                            label {
+                                input { r#type: "radio", name: "primary_paymail", checked: *alias == *primary_paymail.read(), onclick: move |_| on_primary_paymail_change(alias.clone()) }
+                                "{alias} {if *alias == *primary_paymail.read() { '(Primary)' } else { '' }}"
+                            }
+                        }
+                        div { class: "alias-input",
+                            input { r#type: "text", placeholder: "New alias prefix (5+ digits)", oninput: on_new_alias }
+                            if alias_price.read() > Decimal::ZERO {
+                                SwipeButton {
+                                    recipient: "000@zip.io",
+                                    amount: (alias_price.read() * Decimal::from(100_000_000) / wallet.fetch_price(&selected_currency.read()).await.unwrap_or(Decimal::ONE)).to_u64().unwrap_or(0),
+                                    "Pay {alias_price} {selected_currency} for {new_alias}@zip.io"
+                                }
                             }
                         }
                     }
                 }
-            }
-            div { class: "section",
-                h3 { "Enable 2FA" }
-                toggle { checked: *two_fa_enabled.read(), onchange: on_two_fa_toggle }
-                if let Some(_) = *two_fa_secret.read() {
-                    img { src: "data:image/png;base64,{qr_code.read()}", alt: "2FA QR Code" }
-                    input { r#type: "text", placeholder: "Enter verification code", oninput: move |evt| two_fa_code.set(evt.value) }
-                    button { onclick: on_verify_two_fa, "Verify" }
+                div { class: "section",
+                    h3 { "Enable 2FA" }
+                    toggle { checked: *two_fa_enabled.read(), onchange: on_two_fa_toggle }
+                    if let Some(_) = *two_fa_secret.read() {
+                        img { src: "data:image/png;base64,{qr_code.read()}", alt: "2FA QR Code" }
+                        input { r#type: "text", placeholder: "Enter verification code", oninput: move |evt| two_fa_code.set(evt.value) }
+                        button { onclick: on_verify_two_fa, "Verify" }
+                    }
                 }
+                ErrorDisplay { error: *error.read() }
+                Notification { message: *notification.read(), is_success: true }
             }
-            ErrorDisplay { error: *error.read() }
-            Notification { message: *notification.read(), is_success: true }
         }
     }
 }
