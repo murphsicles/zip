@@ -1,10 +1,10 @@
 use dioxus::prelude::*;
 
-pub fn global_styles() -> String {
+pub fn global_styles() -> &'static str {
     r#"
         body { font-family: Arial, sans-serif; background-color: #fff; color: #333; margin: 0; padding: 0; }
         .app-container { min-height: 100vh; display: flex; flex-direction: column; }
-        .auth-form { display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 10px; }
+        .auth { display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 10px; }
         .dashboard { padding: 20px; background-color: #f0f0f0; border-radius: 8px; text-align: center; }
         .balance-main { font-size: 2.5em; font-weight: bold; color: #333; }
         .balance-sub { font-size: 1.2em; color: #666; }
@@ -19,10 +19,20 @@ pub fn global_styles() -> String {
         .settings-page { display: flex; flex-direction: column; gap: 20px; padding: 20px; }
         .section { border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
         .paymail-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+        .navbar { display: flex; justify-content: space-around; padding: 10px; background-color: #4caf50; color: white; }
+        .nav-link { color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px; }
+        .nav-link:hover { background-color: #388e3c; }
         select, input, button { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
         toggle { margin: 0 10px; }
-        @media (max-width: 600px) { .swipe-button { width: 100%; } .history-grid { grid-template-columns: 1fr; font-size: 12px; } .dashboard { padding: 10px; } .balance-main { font-size: 2em; } .paymail-list { grid-template-columns: 1fr; } }
-    "#.to_string()
+        @media (max-width: 600px) {
+            .swipe-button { width: 100%; }
+            .history-grid { grid-template-columns: 1fr; font-size: 12px; }
+            .dashboard { padding: 10px; }
+            .balance-main { font-size: 2em; }
+            .paymail-list { grid-template-columns: 1fr; }
+            .navbar { flex-direction: column; gap: 10px; }
+        }
+    "#
 }
 
 #[component]
