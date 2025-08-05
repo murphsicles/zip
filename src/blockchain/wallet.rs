@@ -1,22 +1,23 @@
 use parking_lot::RwLock;
 use reqwest::Client;
 use rust_decimal::Decimal;
+use std::collections::HashMap;
+use std::sync::Arc;
+use uuid::Uuid;
+
 use rust_sv::address::{addr_encode, AddressType};
 use rust_sv::bip32::{ChildNumber, ExtendedPrivateKey};
 use rust_sv::private_key::PrivateKey;
 use rust_sv::public_key::PublicKey;
 use rust_sv::util::hash160;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
-use uuid::Uuid;
 
-use crate::blockchain::transaction::TransactionManager;
+use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
+use crate::utils::metrics::Metrics;
 
-#[derive(Serialize, Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct WalletData {
     pub address: String,
     pub balance: u64,
@@ -32,6 +33,7 @@ pub struct WalletManager {
     hd_key: RwLock<ExtendedPrivateKey>,
     derivation_index: RwLock<u32>,
     price_cache: RwLock<HashMap<String, Decimal>>,
+    metrics: Metrics,
 }
 
 impl WalletManager {
@@ -41,6 +43,7 @@ impl WalletManager {
         tx_manager: Arc<TransactionManager>,
         rustbus: Option<Arc<RustBusIntegrator>>,
     ) -> Result<Self, ZipError> {
+        let config = EnvConfig::load()?;
         let priv_key_bytes = storage.get_private_key().unwrap_or_else(|_| {
             let seed = generate_salt(64);
             let hd_key = ExtendedPrivateKey::new_seed(&seed, rust_sv::network::Network::Mainnet)?;
@@ -56,6 +59,7 @@ impl WalletManager {
             hd_key: RwLock::new(hd_key),
             derivation_index: RwLock::new(0),
             price_cache: RwLock::new(HashMap::new()),
+            metrics: Metrics::new(&config),
         })
     }
 
@@ -84,6 +88,7 @@ impl WalletManager {
         };
         let serialized = bincode::serialize(&data).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.store_user_data(Uuid::new_v4(), &serialized)?;
+        self.metrics.track_payment_event(&Uuid::new_v4().to_string(), "address_generated", 0, true);
         Ok(address)
     }
 
@@ -144,7 +149,7 @@ impl WalletManager {
         };
         let serialized = bincode::serialize(&data).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
-
+        self.metrics.track_payment_event(&user_id.to_string(), "balance_update", balance, true);
         Ok((balance, balance_converted))
     }
 
@@ -156,8 +161,12 @@ impl WalletManager {
         amount: u64,
         fee: u64,
     ) -> Result<String, ZipError> {
-        let tx = self.tx_manager.build_payment_tx(user_id, recipient_script, amount, fee).await?;
-        let tx_hex = tx.to_hex()?;
-        Ok(tx_hex)
+        let result = self.tx_manager.build_payment_tx(user_id, recipient_script, amount, fee).await;
+        let tx_id = match &result {
+            Ok(tx) => tx.to_hex()?,
+            Err(_) => "".to_string(),
+        };
+        self.metrics.track_payment_event(&user_id.to_string(), &tx_id, amount, result.is_ok());
+        result
     }
-}
+            }
