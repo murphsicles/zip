@@ -1,7 +1,6 @@
 use dioxus::prelude::*;
 use rust_decimal::Decimal;
 use std::collections::{HashMap, HashSet};
-use totp_rs::{Algorithm, Secret, TOTP};
 use uuid::Uuid;
 
 use crate::auth::AuthManager;
@@ -10,6 +9,7 @@ use crate::errors::ZipError;
 use crate::storage::ZipStorage;
 use crate::ui::components::{ErrorDisplay, Notification, SwipeButton, Theme, ThemeProvider, ThemeSwitcher};
 use crate::ui::styles::global_styles;
+use crate::utils::auth::AuthUtils;
 
 #[component]
 pub fn Settings() -> Element {
@@ -17,6 +17,7 @@ pub fn Settings() -> Element {
     let paymail = use_context::<PaymailManager>();
     let wallet = use_context::<WalletManager>();
     let auth = use_context::<AuthManager>();
+    let auth_utils = use_context::<AuthUtils>();
     let user_id = use_signal(|| Uuid::new_v4());
     let currencies = ["USD", "GBP", "EUR", "JPY", "CAD", "AUD", "CHF", "CNY", "SEK", "NZD"];
     let selected_currency = use_signal(|| "USD".to_string());
@@ -121,9 +122,9 @@ pub fn Settings() -> Element {
 
     let on_pay_alias = move || async move {
         if *two_fa_enabled.read() {
-            if let Some(secret) = two_fa_secret.read().as_ref() {
-                let totp = TOTP::new_from_secret(secret).unwrap();
-                if !totp.check_current(&two_fa_code.read()).unwrap() {
+            match auth_utils.validate_totp(*user_id.read(), &two_fa_code.read()).await {
+                Ok(true) => {}
+                Ok(false) | Err(_) => {
                     error.set(Some(ZipError::Auth("Invalid 2FA code".to_string())));
                     return;
                 }
@@ -164,9 +165,9 @@ pub fn Settings() -> Element {
     let on_primary_paymail_change = move |alias: String| {
         spawn(async move {
             if *two_fa_enabled.read() {
-                if let Some(secret) = two_fa_secret.read().as_ref() {
-                    let totp = TOTP::new_from_secret(secret).unwrap();
-                    if !totp.check_current(&two_fa_code.read()).unwrap() {
+                match auth_utils.validate_totp(*user_id.read(), &two_fa_code.read()).await {
+                    Ok(true) => {}
+                    Ok(false) | Err(_) => {
                         error.set(Some(ZipError::Auth("Invalid 2FA code".to_string())));
                         return;
                     }
@@ -178,53 +179,53 @@ pub fn Settings() -> Element {
     };
 
     let on_two_fa_toggle = move |_| {
-        if *two_fa_enabled.read() {
-            two_fa_enabled.set(false);
-            two_fa_secret.set(None);
-            storage.store_user_data(*user_id.read(), b"").unwrap();
-            notification.set(Some("2FA disabled".to_string()));
-        } else {
-            let secret = Secret::Raw(generate_salt(20));
-            let totp = TOTP::new(
-                Algorithm::SHA1,
-                6,
-                1,
-                30,
-                secret.to_bytes().unwrap(),
-                Some("Zip Wallet".to_string()),
-                primary_paymail.read().clone(),
-            )
-            .unwrap();
-            qr_code.set(totp.get_qr().unwrap());
-            two_fa_secret.set(Some(totp.secret_base32().unwrap()));
-            notification.set(Some("2FA setup initiated".to_string()));
-        }
+        spawn(async move {
+            if *two_fa_enabled.read() {
+                two_fa_enabled.set(false);
+                two_fa_secret.set(None);
+                storage.store_user_data(*user_id.read(), b"").unwrap();
+                notification.set(Some("2FA disabled".to_string()));
+            } else {
+                match auth_utils.generate_totp(*user_id.read(), &primary_paymail.read()).await {
+                    Ok((secret, qr)) => {
+                        qr_code.set(qr);
+                        two_fa_secret.set(Some(secret));
+                        notification.set(Some("2FA setup initiated".to_string()));
+                    }
+                    Err(e) => error.set(Some(e)),
+                }
+            }
+        });
     };
 
     let on_verify_two_fa = move |_| {
-        if let Some(secret) = &*two_fa_secret.read() {
-            let totp = TOTP::new_from_secret(secret).unwrap();
-            if totp.check_current(&two_fa_code.read()).unwrap() {
-                two_fa_enabled.set(true);
-                let mut prefs = HashMap::new();
-                prefs.insert("currency".to_string(), selected_currency.read().clone());
-                prefs.insert("2fa_enabled".to_string(), secret.clone());
-                prefs.insert(
-                    "theme".to_string(),
-                    match *selected_theme.read() {
-                        Theme::Light => "light".to_string(),
-                        Theme::Dark => "dark".to_string(),
-                    },
-                );
-                let serialized = bincode::serialize(&prefs).unwrap();
-                storage.store_user_data(*user_id.read(), &serialized).unwrap();
-                two_fa_secret.set(None);
-                qr_code.set(String::new());
-                notification.set(Some("2FA enabled".to_string()));
-            } else {
-                error.set(Some(ZipError::Auth("Invalid 2FA code".to_string())));
+        spawn(async move {
+            if let Some(secret) = &*two_fa_secret.read() {
+                match auth_utils.validate_totp(*user_id.read(), &two_fa_code.read()).await {
+                    Ok(true) => {
+                        two_fa_enabled.set(true);
+                        let mut prefs = HashMap::new();
+                        prefs.insert("currency".to_string(), selected_currency.read().clone());
+                        prefs.insert("2fa_enabled".to_string(), secret.clone());
+                        prefs.insert(
+                            "theme".to_string(),
+                            match *selected_theme.read() {
+                                Theme::Light => "light".to_string(),
+                                Theme::Dark => "dark".to_string(),
+                            },
+                        );
+                        let serialized = bincode::serialize(&prefs).unwrap();
+                        storage.store_user_data(*user_id.read(), &serialized).unwrap();
+                        two_fa_secret.set(None);
+                        qr_code.set(String::new());
+                        notification.set(Some("2FA enabled".to_string()));
+                    }
+                    Ok(false) | Err(_) => {
+                        error.set(Some(ZipError::Auth("Invalid 2FA code".to_string())));
+                    }
+                }
             }
-        }
+        });
     };
 
     rsx! {
