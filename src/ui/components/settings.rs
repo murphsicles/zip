@@ -8,7 +8,7 @@ use crate::auth::PasskeyManager;
 use crate::blockchain::{PaymailManager, WalletManager};
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
-use crate::ui::components::SwipeButton;
+use crate::ui::components::{ErrorDisplay, SwipeButton};
 use crate::ui::styles::global_styles;
 
 #[component]
@@ -27,25 +27,41 @@ pub fn Settings() -> Element {
     let two_fa_secret = use_signal(|| None::<String>);
     let two_fa_code = use_signal(|| String::new());
     let qr_code = use_signal(|| String::new());
-    let error = use_signal(|| None::<String>);
+    let error = use_signal(|| None::<ZipError>);
 
     use_effect(move || async move {
         // Load preferences
-        if let Some(data) = storage.get_user_data(*user_id.read())? {
+        if let Some(data) = storage.get_user_data(*user_id.read()).unwrap_or_default() {
             let prefs: HashMap<String, String> = bincode::deserialize(&data).unwrap_or_default();
             selected_currency.set(prefs.get("currency").cloned().unwrap_or("USD".to_string()));
             two_fa_enabled.set(prefs.get("2fa_enabled").is_some());
         }
         // Load PayMail aliases
-        let aliases = paymail.get_user_aliases(*user_id.read()).await.unwrap_or_default();
-        paymail_aliases.set(aliases);
-        if let Some(primary) = paymail_aliases.read().iter().next() {
-            primary_paymail.set(primary.clone());
+        match paymail.get_user_aliases(*user_id.read()).await {
+            Ok(aliases) => {
+                paymail_aliases.set(aliases);
+                if let Some(primary) = paymail_aliases.read().iter().next() {
+                    primary_paymail.set(primary.clone());
+                }
+            }
+            Err(e) => error.set(Some(e)),
+        }
+        // Assign default PayMail if none exists
+        if paymail_aliases.read().is_empty() {
+            match paymail.create_default_alias(*user_id.read(), None).await {
+                Ok((alias, _)) => {
+                    let mut aliases = paymail_aliases.read().clone();
+                    aliases.insert(alias);
+                    paymail_aliases.set(aliases);
+                    primary_paymail.set("101@zip.io".to_string());
+                }
+                Err(e) => error.set(Some(e)),
+            }
         }
     });
 
     let on_currency_change = move |evt: Event<FormData>| {
-        let new_currency = evt.value;
+        let new_currency = evt.value.clone();
         selected_currency.set(new_currency.clone());
         let mut prefs = HashMap::new();
         prefs.insert("currency".to_string(), new_currency);
@@ -62,7 +78,7 @@ pub fn Settings() -> Element {
             new_alias.set(prefix.clone());
             match paymail.create_paid_alias(*user_id.read(), &prefix).await {
                 Ok((_, price)) => alias_price.set(price),
-                Err(e) => error.set(Some(e.to_string())),
+                Err(e) => error.set(Some(e)),
             }
         });
     };
@@ -71,31 +87,41 @@ pub fn Settings() -> Element {
         if *two_fa_enabled.read() {
             if let Some(secret) = two_fa_secret.read().as_ref() {
                 let totp = TOTP::new_from_secret(secret).unwrap();
-                if !totp.check_current(&two_fa_code.read())? {
-                    error.set(Some("Invalid 2FA code".to_string()));
-                    return Ok(());
+                if !totp.check_current(&two_fa_code.read()).unwrap() {
+                    error.set(Some(ZipError::Auth("Invalid 2FA code".to_string())));
+                    return;
                 }
             }
         }
-        let (alias, price) = paymail
-            .create_paid_alias(*user_id.read(), &new_alias.read())
-            .await
-            .unwrap();
-        let satoshis = (price * Decimal::from(100_000_000) / wallet.fetch_price(&selected_currency.read()).await.unwrap())
+        let (alias, price) = match paymail.create_paid_alias(*user_id.read(), &new_alias.read()).await {
+            Ok(result) => result,
+            Err(e) => {
+                error.set(Some(e));
+                return;
+            }
+        };
+        let satoshis = (price * Decimal::from(100_000_000) / wallet.fetch_price(&selected_currency.read()).await.unwrap_or(Decimal::ONE))
             .to_u64()
             .unwrap_or(0);
-        let (script, _) = paymail.resolve_paymail("000@zip.io", satoshis).await.unwrap();
-        wallet
-            .send_payment(*user_id.read(), script, satoshis, 1000)
-            .await
-            .unwrap();
-        paymail.confirm_alias(*user_id.read(), &alias).await.unwrap();
-        let mut aliases = paymail_aliases.read().clone();
-        aliases.insert(alias);
-        paymail_aliases.set(aliases);
-        new_alias.set(String::new());
-        alias_price.set(Decimal::ZERO);
-        Ok(())
+        match paymail.resolve_paymail("000@zip.io", satoshis).await {
+            Ok((script, _)) => {
+                match wallet.send_payment(*user_id.read(), script, satoshis, 1000).await {
+                    Ok(_) => {
+                        if paymail.confirm_alias(*user_id.read(), &alias).await.is_ok() {
+                            let mut aliases = paymail_aliases.read().clone();
+                            aliases.insert(alias);
+                            paymail_aliases.set(aliases);
+                            new_alias.set(String::new());
+                            alias_price.set(Decimal::ZERO);
+                        } else {
+                            error.set(Some(ZipError::Blockchain("Failed to confirm alias".to_string())));
+                        }
+                    }
+                    Err(e) => error.set(Some(e)),
+                }
+            }
+            Err(e) => error.set(Some(e)),
+        }
     };
 
     let on_primary_paymail_change = move |alias: String| {
@@ -103,14 +129,13 @@ pub fn Settings() -> Element {
             if *two_fa_enabled.read() {
                 if let Some(secret) = two_fa_secret.read().as_ref() {
                     let totp = TOTP::new_from_secret(secret).unwrap();
-                    if !totp.check_current(&two_fa_code.read())? {
-                        error.set(Some("Invalid 2FA code".to_string()));
-                        return Ok(());
+                    if !totp.check_current(&two_fa_code.read()).unwrap() {
+                        error.set(Some(ZipError::Auth("Invalid 2FA code".to_string())));
+                        return;
                     }
                 }
             }
             primary_paymail.set(alias);
-            Ok(())
         });
     };
 
@@ -139,7 +164,7 @@ pub fn Settings() -> Element {
     let on_verify_two_fa = move |_| {
         if let Some(secret) = &*two_fa_secret.read() {
             let totp = TOTP::new_from_secret(secret).unwrap();
-            if totp.check_current(&two_fa_code.read())? {
+            if totp.check_current(&two_fa_code.read()).unwrap() {
                 two_fa_enabled.set(true);
                 let mut prefs = HashMap::new();
                 prefs.insert("currency".to_string(), selected_currency.read().clone());
@@ -149,7 +174,7 @@ pub fn Settings() -> Element {
                 two_fa_secret.set(None);
                 qr_code.set(String::new());
             } else {
-                error.set(Some("Invalid 2FA code".to_string()));
+                error.set(Some(ZipError::Auth("Invalid 2FA code".to_string())));
             }
         }
     };
@@ -157,7 +182,7 @@ pub fn Settings() -> Element {
     rsx! {
         div {
             class: "settings-page",
-            style: "{global_styles()} .settings-page { display: flex; flex-direction: column; gap: 20px; padding: 20px; } .section { border: 1px solid #ddd; padding: 15px; border-radius: 8px; } .paymail-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; } .error { color: red; font-size: 0.9em; }",
+            style: "{global_styles()} .settings-page { display: flex; flex-direction: column; gap: 20px; padding: 20px; } .section { border: 1px solid #ddd; padding: 15px; border-radius: 8px; } .paymail-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; } .alias-input { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }",
             div { class: "section",
                 h3 { "Default Currency" }
                 select { onchange: on_currency_change,
@@ -175,12 +200,14 @@ pub fn Settings() -> Element {
                             "{alias} {if *alias == *primary_paymail.read() { '(Primary)' } else { '' }}"
                         }
                     }
-                    input { r#type: "text", placeholder: "New alias prefix (5+ digits)", oninput: on_new_alias }
-                    if alias_price.read() > Decimal::ZERO {
-                        SwipeButton {
-                            recipient: "000@zip.io",
-                            amount: (alias_price.read() * Decimal::from(100_000_000) / wallet.fetch_price(&selected_currency.read()).await.unwrap_or(Decimal::ONE)).to_u64().unwrap_or(0),
-                            "Pay {alias_price} {selected_currency} for {new_alias}@zip.io"
+                    div { class: "alias-input",
+                        input { r#type: "text", placeholder: "New alias prefix (5+ digits)", oninput: on_new_alias }
+                        if alias_price.read() > Decimal::ZERO {
+                            SwipeButton {
+                                recipient: "000@zip.io",
+                                amount: (alias_price.read() * Decimal::from(100_000_000) / wallet.fetch_price(&selected_currency.read()).await.unwrap_or(Decimal::ONE)).to_u64().unwrap_or(0),
+                                "Pay {alias_price} {selected_currency} for {new_alias}@zip.io"
+                            }
                         }
                     }
                 }
@@ -194,9 +221,7 @@ pub fn Settings() -> Element {
                     button { onclick: on_verify_two_fa, "Verify" }
                 }
             }
-            if let Some(err) = error.read().as_ref() {
-                div { class: "error", "{err}" }
-            }
+            ErrorDisplay { error: *error.read() }
         }
     }
-}
+        }
