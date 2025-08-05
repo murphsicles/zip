@@ -3,7 +3,7 @@ use dioxus_router::prelude::*;
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
-use crate::auth::{OAuthManager, PasskeyManager, SessionManager};
+use crate::auth::{AuthManager, SessionManager};
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
@@ -41,11 +41,10 @@ pub fn AppRouter() -> Element {
                     let rustbus = Arc::new(RustBusIntegrator::new("http://localhost:8080").unwrap());
                     let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), Some(Arc::clone(&rustbus))));
                     let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus))).unwrap();
-                    let oauth = OAuthManager::new(Arc::clone(&storage)).unwrap();
-                    let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
+                    let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
                     let paymail = PaymailManager::new(PrivateKey::new(), Arc::clone(&storage));
                     let session = SessionManager::new(Arc::clone(&storage));
-                    (wallet, oauth, passkey, paymail, tx_manager, rustbus, session)
+                    (wallet, auth, paymail, tx_manager, rustbus, session)
                 },
                 div {
                     class: "app-container",
