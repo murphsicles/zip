@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use crate::auth::{OAuthManager, PasskeyManager};
 use crate::errors::ZipError;
+use crate::ui::components::ErrorDisplay;
 use crate::ui::styles::global_styles;
 
 #[component]
@@ -12,7 +13,7 @@ pub fn AuthForm() -> Element {
     let passkey = use_context::<PasskeyManager>();
     let user_id = use_signal(|| Uuid::new_v4());
     let totp_code = use_signal(|| String::new());
-    let error = use_signal(|| None::<String>);
+    let error = use_signal(|| None::<ZipError>);
     let is_loading = use_signal(|| false);
     let animated = use_animated(|style| style.opacity(1.0).duration(0.5));
 
@@ -34,10 +35,10 @@ pub fn AuthForm() -> Element {
                     Ok(_) => {
                         use_router().push(Route::DashboardRoute);
                     }
-                    Err(e) => error.set(Some(e.to_string())),
+                    Err(e) => error.set(Some(e)),
                 }
             }
-            Err(e) => error.set(Some(e.to_string())),
+            Err(e) => error.set(Some(e)),
         }
         is_loading.set(false);
     };
@@ -45,7 +46,7 @@ pub fn AuthForm() -> Element {
     rsx! {
         div {
             class: "auth-form",
-            style: "{global_styles()} .auth-form { display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 10px; } .error { color: red; font-size: 0.9em; }",
+            style: "{global_styles()} .auth-form { display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 10px; }",
             style: "{animated}",
             h2 { class: "title", "Sign Up / Login" }
             button { onclick: on_oauth_signup, disabled: *is_loading.read(), "Sign Up with OAuth" }
@@ -56,11 +57,9 @@ pub fn AuthForm() -> Element {
                 disabled: *is_loading.read()
             }
             button { onclick: on_passkey_login, disabled: *is_loading.read(), "Login with Passkey" }
-            if let Some(err) = error.read().as_ref() {
-                div { class: "error", "{err}" }
-            }
+            ErrorDisplay { error: *error.read() }
             if *is_loading.read() {
-                div { "Loading..." }
+                div { class: "loading", style: "color: #666; font-size: 0.9em;", "Loading..." }
             }
         }
     }
