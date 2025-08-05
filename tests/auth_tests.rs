@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use tokio::runtime::Runtime;
 use uuid::Uuid;
 
@@ -89,5 +90,26 @@ mod tests {
         // Test with missing 2FA code
         let result = passkey.start_authentication(user_id, None).await;
         assert!(matches!(result, Err(ZipError::Passkey(_))));
+    }
+
+    #[tokio::test]
+    async fn test_logout_render() {
+        let storage = Arc::new(ZipStorage::new().unwrap());
+        let oauth = OAuthManager::new(Arc::clone(&storage)).unwrap();
+        let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
+        let user_id = Uuid::new_v4();
+
+        // Simulate authenticated state
+        oauth
+            .storage
+            .store_user_data(user_id, b"test_user")
+            .unwrap();
+
+        let app = VirtualDom::new_with_props(AppRouter, |c| {
+            c.with_context(oauth).with_context(passkey)
+        });
+        let html = app.render_to_string();
+        assert!(html.contains("Logout"));
+        assert!(html.contains("Confirm Logout"));
     }
 }
