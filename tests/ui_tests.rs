@@ -2,11 +2,11 @@ use dioxus::prelude::*;
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
-use crate::auth::{OAuthManager, PasskeyManager, SessionManager};
+use crate::auth::{AuthManager, OAuthManager, PasskeyManager, SessionManager};
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
-use crate::ui::components::{AuthForm, Dashboard, History, Home, Logout, NavBar, PaymentForm, Settings, WalletOverview};
+use crate::ui::components::{Auth, Dashboard, History, Home, Logout, NavBar, PaymentForm, Settings, WalletOverview};
 use crate::ui::router::AppRouter;
 
 #[cfg(test)]
@@ -14,13 +14,12 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_auth_form_render() {
+    async fn test_auth_render() {
         let storage = Arc::new(ZipStorage::new().unwrap());
-        let oauth = OAuthManager::new(Arc::clone(&storage)).unwrap();
-        let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
+        let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
 
         let app = VirtualDom::new_with_props(AppRouter, |c| {
-            c.with_context(oauth).with_context(passkey)
+            c.with_context(auth)
         });
         let html = app.render_to_string();
         assert!(html.contains("Sign Up with OAuth"));
@@ -81,10 +80,10 @@ mod tests {
         let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), Some(Arc::clone(&rustbus))));
         let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus))).unwrap();
         let paymail = PaymailManager::new(PrivateKey::new(), Arc::clone(&storage));
-        let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
+        let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
 
         let app = VirtualDom::new_with_props(AppRouter, |c| {
-            c.with_context(wallet).with_context(paymail).with_context(passkey)
+            c.with_context(wallet).with_context(paymail).with_context(auth)
         });
         let html = app.render_to_string();
         assert!(html.contains("Default Currency"));
@@ -129,14 +128,12 @@ mod tests {
         let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), Some(Arc::clone(&rustbus))));
         let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus))).unwrap();
         let paymail = PaymailManager::new(PrivateKey::new(), Arc::clone(&storage));
-        let oauth = OAuthManager::new(Arc::clone(&storage)).unwrap();
-        let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
+        let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
 
         let app = VirtualDom::new_with_props(AppRouter, |c| {
             c.with_context(wallet)
                 .with_context(paymail)
-                .with_context(oauth)
-                .with_context(passkey)
+                .with_context(auth)
                 .with_context(tx_manager)
                 .with_context(rustbus)
         });
@@ -151,11 +148,10 @@ mod tests {
     #[tokio::test]
     async fn test_logout_render() {
         let storage = Arc::new(ZipStorage::new().unwrap());
-        let oauth = OAuthManager::new(Arc::clone(&storage)).unwrap();
-        let passkey = PasskeyManager::new(Arc::clone(&storage)).unwrap();
+        let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
 
         let app = VirtualDom::new_with_props(AppRouter, |c| {
-            c.with_context(oauth).with_context(passkey)
+            c.with_context(auth)
         });
         let html = app.render_to_string();
         assert!(html.contains("Confirm Logout"));
