@@ -8,7 +8,7 @@ use crate::auth::AuthManager;
 use crate::blockchain::{PaymailManager, WalletManager};
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
-use crate::ui::components::{ErrorDisplay, Notification, SwipeButton, Theme, ThemeProvider};
+use crate::ui::components::{ErrorDisplay, Notification, SwipeButton, Theme, ThemeProvider, ThemeSwitcher};
 use crate::ui::styles::global_styles;
 
 #[component]
@@ -89,11 +89,7 @@ pub fn Settings() -> Element {
         notification.set(Some("Currency updated".to_string()));
     };
 
-    let on_theme_change = move |evt: Event<FormData>| {
-        let new_theme = match evt.value.as_str() {
-            "dark" => Theme::Dark,
-            _ => Theme::Light,
-        };
+    let on_theme_change = move |new_theme: Theme| {
         selected_theme.set(new_theme);
         let mut prefs = HashMap::new();
         prefs.insert("currency".to_string(), selected_currency.read().clone());
@@ -235,7 +231,7 @@ pub fn Settings() -> Element {
         ThemeProvider { theme: *selected_theme.read(),
             div {
                 class: "settings-page",
-                style: "{global_styles()} .settings-page { display: flex; flex-direction: column; gap: 20px; padding: 20px; } .section { border: 1px solid; padding: 15px; border-radius: 8px; } .paymail-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; } .alias-input { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }",
+                style: "{global_styles()}",
                 div { class: "section",
                     h3 { "Default Currency" }
                     select { onchange: on_currency_change,
@@ -246,9 +242,9 @@ pub fn Settings() -> Element {
                 }
                 div { class: "section",
                     h3 { "Theme" }
-                    select { onchange: on_theme_change,
-                        option { value: "light", selected: *selected_theme.read() == Theme::Light, "Light" }
-                        option { value: "dark", selected: *selected_theme.read() == Theme::Dark, "Dark" }
+                    ThemeSwitcher {
+                        current_theme: *selected_theme.read(),
+                        on_theme_change: move |new_theme| on_theme_change(new_theme)
                     }
                 }
                 div { class: "section",
