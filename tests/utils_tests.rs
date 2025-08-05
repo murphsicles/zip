@@ -1,11 +1,13 @@
+use std::error::Error as StdError;
+
+use crate::config::env::EnvConfig;
 use crate::errors::ZipError;
 use crate::utils::error::format_zip_error;
+use crate::utils::metrics::Metrics;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::error::Error;
-    use webauthn_rs::error::WebauthnError;
 
     #[test]
     fn test_zip_error_auth() {
@@ -40,7 +42,7 @@ mod tests {
 
     #[test]
     fn test_zip_error_passkey() {
-        let error = ZipError::Passkey(WebauthnError::CredentialRetrievalError);
+        let error = ZipError::Passkey(webauthn_rs::error::WebauthnError::CredentialRetrievalError);
         assert_eq!(format_zip_error(&error), "Passkey error: CredentialRetrievalError");
     }
 
@@ -48,5 +50,54 @@ mod tests {
     fn test_zip_error_storage() {
         let error = ZipError::Storage(sled::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, "Storage issue")));
         assert!(format_zip_error(&error).starts_with("Storage error:"));
+    }
+
+    #[test]
+    fn test_metrics_auth_event() {
+        let config = EnvConfig {
+            oauth_client_id: String::new(),
+            oauth_client_secret: String::new(),
+            oauth_auth_url: String::new(),
+            oauth_token_url: String::new(),
+            oauth_redirect_uri: String::new(),
+            rustbus_endpoint: String::new(),
+            log_level: "debug".to_string(),
+        };
+        let metrics = Metrics::new(&config);
+        metrics.track_auth_event("user123", "oauth_start", true);
+        // No direct assertion as tracing logs to console, verify via debug output
+    }
+
+    #[test]
+    fn test_metrics_payment_event() {
+        let config = EnvConfig {
+            oauth_client_id: String::new(),
+            oauth_client_secret: String::new(),
+            oauth_auth_url: String::new(),
+            oauth_token_url: String::new(),
+            oauth_redirect_uri: String::new(),
+            rustbus_endpoint: String::new(),
+            log_level: "debug".to_string(),
+        };
+        let metrics = Metrics::new(&config);
+        metrics.track_payment_event("user123", "tx456", 1000, true);
+        // No direct assertion as tracing logs to console, verify via debug output
+    }
+
+    #[test]
+    fn test_metrics_disabled() {
+        let config = EnvConfig {
+            oauth_client_id: String::new(),
+            oauth_client_secret: String::new(),
+            oauth_auth_url: String::new(),
+            oauth_token_url: String::new(),
+            oauth_redirect_uri: String::new(),
+            rustbus_endpoint: String::new(),
+            log_level: "info".to_string(),
+        };
+        let metrics = Metrics::new(&config);
+        metrics.track_auth_event("user123", "oauth_start", true);
+        metrics.track_payment_event("user123", "tx456", 1000, true);
+        // No direct assertion as tracing logs are disabled, verify via no output
     }
 }
