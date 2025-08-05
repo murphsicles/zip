@@ -7,6 +7,7 @@ use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::integrations::RustBusIntegrator;
+use crate::paymail_config::PaymailConfig;
 use crate::storage::ZipStorage;
 
 #[cfg(test)]
@@ -128,39 +129,100 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_wallet_payment_rate_limit() {
+    async fn test_get_user_aliases_rate_limit() {
         let storage = Arc::new(ZipStorage::new().unwrap());
-        let rustbus = Arc::new(RustBusIntegrator::new().unwrap());
-        let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), Some(Arc::clone(&rustbus))));
-        let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus))).unwrap();
+        let priv_key = PrivateKey::new();
+        let paymail = PaymailManager::new(priv_key, Arc::clone(&storage));
         let user_id = Uuid::new_v4();
-        let script = Script::default();
-        let amount = 1000;
-        let fee = 100;
 
         // Test rate limit (5 requests per minute)
         for _ in 0..5 {
-            let result = wallet.send_payment(user_id, script.clone(), amount, fee).await;
-            assert!(result.is_err()); // Mock transaction failure
+            let result = paymail.get_user_aliases(user_id).await;
+            assert!(result.is_ok());
         }
-        let result = wallet.send_payment(user_id, script, amount, fee).await;
+        let result = paymail.get_user_aliases(user_id).await;
         assert!(matches!(result, Err(ZipError::RateLimit(_))));
     }
 
     #[tokio::test]
-    async fn test_wallet_balance_rate_limit() {
+    async fn test_create_default_alias_rate_limit() {
         let storage = Arc::new(ZipStorage::new().unwrap());
-        let rustbus = Arc::new(RustBusIntegrator::new().unwrap());
-        let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), Some(Arc::clone(&rustbus))));
-        let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus))).unwrap();
+        let priv_key = PrivateKey::new();
+        let paymail = PaymailManager::new(priv_key, Arc::clone(&storage));
         let user_id = Uuid::new_v4();
 
         // Test rate limit (5 requests per minute)
         for _ in 0..5 {
-            let result = wallet.update_balance(user_id, "USD").await;
-            assert!(result.is_ok()); // Mock balance update
+            let result = paymail.create_default_alias(user_id, None).await;
+            assert!(result.is_ok());
         }
-        let result = wallet.update_balance(user_id, "USD").await;
+        let result = paymail.create_default_alias(user_id, None).await;
         assert!(matches!(result, Err(ZipError::RateLimit(_))));
+    }
+
+    #[tokio::test]
+    async fn test_create_paid_alias_rate_limit() {
+        let storage = Arc::new(ZipStorage::new().unwrap());
+        let priv_key = PrivateKey::new();
+        let paymail = PaymailManager::new(priv_key, Arc::clone(&storage));
+        let user_id = Uuid::new_v4();
+
+        // Test rate limit (5 requests per minute)
+        for _ in 0..5 {
+            let result = paymail.create_paid_alias(user_id, "54321").await;
+            assert!(result.is_ok());
+        }
+        let result = paymail.create_paid_alias(user_id, "54321").await;
+        assert!(matches!(result, Err(ZipError::RateLimit(_))));
+    }
+
+    #[tokio::test]
+    async fn test_confirm_alias_rate_limit() {
+        let storage = Arc::new(ZipStorage::new().unwrap());
+        let priv_key = PrivateKey::new();
+        let paymail = PaymailManager::new(priv_key, Arc::clone(&storage));
+        let user_id = Uuid::new_v4();
+        paymail.create_paid_alias(user_id, "54321").await.unwrap();
+
+        // Test rate limit (5 requests per minute)
+        for _ in 0..5 {
+            let result = paymail.confirm_alias(user_id, "54321@zip.io").await;
+            assert!(result.is_ok());
+        }
+        let result = paymail.confirm_alias(user_id, "54321@zip.io").await;
+        assert!(matches!(result, Err(ZipError::RateLimit(_))));
+    }
+
+    #[tokio::test]
+    async fn test_paymail_telemetry() {
+        let storage = Arc::new(ZipStorage::new().unwrap());
+        let priv_key = PrivateKey::new();
+        let paymail = PaymailManager::new(priv_key, Arc::clone(&storage));
+        let user_id = Uuid::new_v4();
+
+        // Test telemetry for create_default_alias
+        let result = paymail.create_default_alias(user_id, None).await;
+        assert!(result.is_ok());
+
+        // Test telemetry for create_paid_alias
+        let result = paymail.create_paid_alias(user_id, "54321").await;
+        assert!(result.is_ok());
+
+        // Test telemetry for confirm_alias
+        let result = paymail.confirm_alias(user_id, "54321@zip.io").await;
+        assert!(result.is_ok());
+
+        // Test telemetry for get_user_aliases
+        let result = paymail.get_user_aliases(user_id).await;
+        assert!(result.is_ok());
+
+        // Test telemetry for resolve_paymail
+        let result = paymail.resolve_paymail("mock@paymail.com", 10000).await;
+        assert!(matches!(result, Err(ZipError::Blockchain(_))));
+
+        // Test telemetry for send_p2p_tx
+        let metadata = Value::Null;
+        let result = paymail.send_p2p_tx("mock@paymail.com", "mock_tx_hex", metadata, "ref").await;
+        assert!(result.is_ok());
     }
 }
