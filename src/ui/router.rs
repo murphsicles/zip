@@ -7,7 +7,7 @@ use crate::auth::{OAuthManager, PasskeyManager};
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
-use crate::ui::components::{AuthForm, Dashboard, History, NavBar, PaymentForm, Settings, SwipeButton, WalletOverview};
+use crate::ui::components::{AuthCallback, AuthForm, Dashboard, History, NavBar, PaymentForm, Settings, SwipeButton, WalletOverview};
 use crate::ui::styles::global_styles;
 use crate::ui::transitions::{fade_in, slide_right};
 
@@ -17,6 +17,8 @@ pub enum Route {
     Home,
     #[route("/auth")]
     Auth,
+    #[route("/auth/callback")]
+    AuthCallbackRoute,
     #[route("/dashboard")]
     DashboardRoute,
     #[route("/payment")]
@@ -69,6 +71,11 @@ fn Home() -> Element {
 #[component]
 fn Auth() -> Element {
     fade_in(rsx! { AuthForm {} })
+}
+
+#[component]
+fn AuthCallbackRoute() -> Element {
+    fade_in(rsx! { AuthCallback {} })
 }
 
 #[component]
