@@ -36,7 +36,7 @@ impl PaymailManager {
             next_prefix: Mutex::new(101),
             telemetry: Telemetry::new(&config),
             rate_limiter: RateLimiter::new(5, 60), // 5 alias ops per minute
-        })
+        }
     }
 
     /// Resolves PayMail to payment script and amount.
