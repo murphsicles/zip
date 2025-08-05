@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use rust_decimal::Decimal;
 use uuid::Uuid;
 
 use crate::auth::{OAuthManager, PasskeyManager};
@@ -6,7 +7,7 @@ use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::config::Config;
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
-use crate::ui::components::{AuthForm, Dashboard, History, PaymentForm, Settings};
+use crate::ui::components::{AuthForm, Dashboard, History, PaymentForm, Settings, WalletOverview};
 use crate::ui::router::AppRouter;
 
 #[cfg(test)]
@@ -25,20 +26,23 @@ mod tests {
         let html = app.render_to_string();
         assert!(html.contains("Sign Up with OAuth"));
         assert!(html.contains("Login with Passkey"));
+        assert!(html.contains("2FA Code"));
     }
 
     #[tokio::test]
-    async fn test_dashboard_render() {
+    async fn test_wallet_overview_render() {
         let storage = Arc::new(ZipStorage::new().unwrap());
         let rustbus = Arc::new(RustBusIntegrator::new("http://localhost:8080").unwrap());
         let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), Some(Arc::clone(&rustbus))));
         let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus))).unwrap();
+        let paymail = PaymailManager::new(PrivateKey::new(), Arc::clone(&storage));
 
         let app = VirtualDom::new_with_props(AppRouter, |c| {
-            c.with_context(wallet)
+            c.with_context(wallet).with_context(paymail)
         });
         let html = app.render_to_string();
-        assert!(html.contains("Welcome to Your Wallet"));
+        assert!(html.contains("Wallet Overview"));
+        assert!(html.contains("Primary PayMail"));
     }
 
     #[tokio::test]
@@ -51,7 +55,7 @@ mod tests {
             c.with_context(paymail)
         });
         let html = app.render_to_string();
-        assert!(html.contains("PayMail handle"));
+        assert!(html.contains("Recipient PayMail"));
         assert!(html.contains("Swipe to Pay"));
     }
 
@@ -68,6 +72,7 @@ mod tests {
         let html = app.render_to_string();
         assert!(html.contains("Token"));
         assert!(html.contains("Amount"));
+        assert!(html.contains("TXID"));
     }
 
     #[tokio::test]
@@ -110,10 +115,11 @@ mod tests {
         wallet.send_payment(user_id, script, satoshis, 1000).await.unwrap();
         paymail.confirm_alias(user_id, &alias).await.unwrap();
 
-        let html = VirtualDom::new_with_props(AppRouter, |c| {
+        let app = VirtualDom::new_with_props(AppRouter, |c| {
             c.with_context(wallet).with_context(paymail)
-        })
-        .render_to_string();
+        });
+        let html = app.render_to_string();
         assert!(html.contains("54321@zip.io"));
+        assert!(html.contains("Pay 10 USD"));
     }
 }
