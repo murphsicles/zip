@@ -7,7 +7,7 @@ use crate::auth::{OAuthManager, PasskeyManager};
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
-use crate::ui::components::{AuthForm, Dashboard, History, PaymentForm, SwipeButton};
+use crate::ui::components::{AuthForm, Dashboard, History, PaymentForm, Settings, SwipeButton, WalletOverview};
 use crate::ui::styles::global_styles;
 use crate::ui::transitions::{fade_in, slide_right};
 
@@ -70,21 +70,7 @@ fn Auth() -> Element {
 
 #[component]
 fn DashboardRoute() -> Element {
-    let wallet = use_context::<WalletManager>();
-    let user_id = use_signal(|| Uuid::new_v4());
-    let balance = use_signal(|| 0u64);
-    let balance_converted = use_signal(|| Decimal::ZERO);
-
-    use_effect(move || async move {
-        let (bsv, usd) = wallet
-            .update_balance(*user_id.read(), "USD")
-            .await
-            .unwrap_or((0, Decimal::ZERO));
-        balance.set(bsv);
-        balance_converted.set(usd);
-    });
-
-    fade_in(rsx! { Dashboard {} })
+    fade_in(rsx! { WalletOverview {} })
 }
 
 #[component]
