@@ -5,31 +5,31 @@ use crate::auth::{OAuthManager, PasskeyManager, SessionManager};
 use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
-use crate::utils::metrics::Metrics;
+use crate::utils::telemetry::Telemetry;
 
 pub struct AuthManager {
     oauth: OAuthManager,
     passkey: PasskeyManager,
     session: SessionManager,
-    metrics: Metrics,
+    telemetry: Telemetry,
 }
 
 impl AuthManager {
-    /// Initializes unified auth manager with metrics.
+    /// Initializes unified auth manager with telemetry.
     pub fn new(storage: Arc<ZipStorage>) -> Result<Self, ZipError> {
         let config = EnvConfig::load()?;
         Ok(Self {
             oauth: OAuthManager::new(Arc::clone(&storage))?,
             passkey: PasskeyManager::new(Arc::clone(&storage))?,
             session: SessionManager::new(Arc::clone(&storage)),
-            metrics: Metrics::new(&config),
+            telemetry: Telemetry::new(&config),
         })
     }
 
     /// Starts OAuth flow, tracks event, returns auth URL and CSRF token.
     pub fn start_oauth(&self) -> (String, String) {
         let (url, csrf) = self.oauth.start_oauth_flow();
-        self.metrics.track_auth_event("anonymous", "oauth_start", true);
+        let _ = self.telemetry.track_auth_event("anonymous", "oauth_start", true).await;
         (url, csrf)
     }
 
@@ -40,10 +40,13 @@ impl AuthManager {
         pkce_verifier: PkceCodeVerifier,
         csrf_token: String,
     ) -> Result<Uuid, ZipError> {
-        let (user_id, email) = self.oauth.complete_oauth_flow(code, pkce_verifier, csrf_token).await?;
-        self.session.create_session(user_id, email).await?;
-        self.metrics.track_auth_event(&user_id.to_string(), "oauth_complete", true);
-        Ok(user_id)
+        let result = self.oauth.complete_oauth_flow(code, pkce_verifier, csrf_token).await;
+        let success = result.is_ok();
+        if let Ok((user_id, email)) = &result {
+            self.session.create_session(*user_id, email.clone()).await?;
+            let _ = self.telemetry.track_auth_event(&user_id.to_string(), "oauth_complete", success).await;
+        }
+        result.map(|(user_id, _)| user_id)
     }
 
     /// Starts Passkey authentication with 2FA check, tracks event.
@@ -53,11 +56,7 @@ impl AuthManager {
         totp_code: Option<&str>,
     ) -> Result<(RequestChallengeResponse, PasskeyAuthenticationState), ZipError> {
         let result = self.passkey.start_authentication(user_id, totp_code).await;
-        self.metrics.track_auth_event(
-            &user_id.to_string(),
-            "passkey_start",
-            result.is_ok(),
-        );
+        let _ = self.telemetry.track_auth_event(&user_id.to_string(), "passkey_start", result.is_ok()).await;
         result
     }
 
@@ -69,18 +68,17 @@ impl AuthManager {
         state: PasskeyAuthenticationState,
     ) -> Result<(), ZipError> {
         let result = self.passkey.complete_authentication(cred, state);
-        let email = self
-            .session
-            .get_session(user_id)
-            .await?
-            .map(|s| s.email)
-            .unwrap_or("passkey_user@example.com".to_string());
-        self.session.create_session(user_id, email).await?;
-        self.metrics.track_auth_event(
-            &user_id.to_string(),
-            "passkey_complete",
-            result.is_ok(),
-        );
+        let success = result.is_ok();
+        if success {
+            let email = self
+                .session
+                .get_session(user_id)
+                .await?
+                .map(|s| s.email)
+                .unwrap_or("passkey_user@example.com".to_string());
+            self.session.create_session(user_id, email).await?;
+        }
+        let _ = self.telemetry.track_auth_event(&user_id.to_string(), "passkey_complete", success).await;
         result
     }
 
@@ -91,9 +89,9 @@ impl AuthManager {
 
     /// Clears session for logout and tracks event.
     pub async fn logout(&self, user_id: Uuid) -> Result<(), ZipError> {
-        self.session.clear_session(user_id).await?;
-        self.oauth.clear_session(user_id).await?;
-        self.metrics.track_auth_event(&user_id.to_string(), "logout", true);
-        Ok(())
+        let result = self.session.clear_session(user_id).await;
+        let success = result.is_ok();
+        let _ = self.telemetry.track_auth_event(&user_id.to_string(), "logout", success).await;
+        result
     }
 }
