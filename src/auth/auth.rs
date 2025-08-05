@@ -5,6 +5,7 @@ use crate::auth::{OAuthManager, PasskeyManager};
 use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
+use crate::utils::security::Security;
 use crate::utils::session::Session;
 use crate::utils::telemetry::Telemetry;
 
@@ -44,7 +45,9 @@ impl AuthManager {
         let result = self.oauth.complete_oauth_flow(code, pkce_verifier, csrf_token).await;
         let success = result.is_ok();
         if let Ok((user_id, email)) = &result {
-            self.session.create(*user_id, email.clone()).await?;
+            let sanitized_email = Security::sanitize_input(email)?;
+            Security::validate_email(&sanitized_email)?;
+            self.session.create(*user_id, sanitized_email).await?;
             let _ = self.telemetry.track_auth_event(&user_id.to_string(), "oauth_complete", success).await;
         }
         result.map(|(user_id, _)| user_id)
@@ -77,7 +80,9 @@ impl AuthManager {
                 .await?
                 .map(|s| s.email)
                 .unwrap_or("passkey_user@example.com".to_string());
-            self.session.create(user_id, email).await?;
+            let sanitized_email = Security::sanitize_input(&email)?;
+            Security::validate_email(&sanitized_email)?;
+            self.session.create(user_id, sanitized_email).await?;
         }
         let _ = self.telemetry.track_auth_event(&user_id.to_string(), "passkey_complete", success).await;
         result
