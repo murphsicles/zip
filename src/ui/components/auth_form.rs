@@ -2,15 +2,14 @@ use dioxus::prelude::*;
 use dioxus_motion::use_animated;
 use uuid::Uuid;
 
-use crate::auth::{OAuthManager, PasskeyManager};
+use crate::auth::AuthManager;
 use crate::errors::ZipError;
 use crate::ui::components::{ErrorDisplay, Loading, Notification};
 use crate::ui::styles::global_styles;
 
 #[component]
 pub fn AuthForm() -> Element {
-    let oauth = use_context::<OAuthManager>();
-    let passkey = use_context::<PasskeyManager>();
+    let auth = use_context::<AuthManager>();
     let user_id = use_signal(|| Uuid::new_v4());
     let totp_code = use_signal(|| String::new());
     let error = use_signal(|| None::<ZipError>);
@@ -20,20 +19,20 @@ pub fn AuthForm() -> Element {
 
     let on_oauth_signup = move |_| async move {
         is_loading.set(true);
-        let (url, _) = oauth.start_oauth_flow();
+        let (url, _) = auth.start_oauth();
         // Open url in system browser or embedded view
-        // Assume callback handled in router
+        // Assume callback handled in AuthCallback
         notification.set(Some("Redirecting to OAuth provider".to_string()));
         is_loading.set(false);
     };
 
     let on_passkey_login = move |_| async move {
         is_loading.set(true);
-        match passkey.start_authentication(*user_id.read(), Some(&totp_code.read())).await {
+        match auth.start_passkey_authentication(*user_id.read(), Some(&totp_code.read())).await {
             Ok((challenge, state)) => {
                 // Prompt biometric and complete
                 let cred = PublicKeyCredential::default(); // Placeholder
-                match passkey.complete_authentication(cred, state) {
+                match auth.complete_passkey_authentication(*user_id.read(), cred, state).await {
                     Ok(_) => {
                         notification.set(Some("Login successful".to_string()));
                         use_router().push(Route::DashboardRoute);
