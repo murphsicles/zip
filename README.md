@@ -1,6 +1,6 @@
 # Zip Wallet 🚀
 
-High-performance, non-custodial, cross-platform BSV wallet with embeddedabke swipe-to-pay buttons, PayMail, and hybrid authentication (OAuth 2.1 + Passkeys). Built in Rust for efficiency, scalability, and security. 💪
+High-performance, non-custodial, cross-platform BSV wallet with embedible swipe-to-pay buttons, PayMail, and hybrid authentication (OAuth 2.1 + Passkeys). Built in Rust for efficiency, scalability, and security. 💪
 
 ## Features 📋
 - **Non-Custodial BSV Wallet**: Secure HD wallet with `rust-sv` for key generation and address derivation. 🔑
