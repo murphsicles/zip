@@ -40,7 +40,11 @@ webauthn-rs = "0.5"
 [features]
 default = ["ui"]
 ui = ["dioxus", "dioxus-motion"]
-advanced = ["nprint", "rustbus"]
+nPrint-core = ["nprint-core"]
+nPrint-protocols = ["nprint-protocols"]
+nPrint-types = ["nprint-types"]
+nPrint-templates = ["nprint-templates"]
+advanced = ["nPrint-core", "nPrint-protocols", "nPrint-types", "nPrint-templates", "rustbus"]
 
 [profile.release]
 opt-level = 3
