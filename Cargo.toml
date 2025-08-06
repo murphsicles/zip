@@ -10,10 +10,10 @@ repository = "https://github.com/murphsicles/zip"
 dioxus = { version = "0.6", features = ["desktop", "mobile", "skia"], optional = true }
 dioxus-motion = { version = "0.2", optional = true }
 keyring = "2.3"
-nprint-core = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", package = "nPrint-core", optional = true }
-nprint-protocols = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", package = "nPrint-protocols", optional = true }
-nprint-types = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", package = "nPrint-types", optional = true }
-nprint-templates = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", package = "nPrint-templates", optional = true }
+nprint-core = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", package = "nprint-core", optional = true }
+nprint-protocols = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", package = "nprint-protocols", optional = true }
+nprint-types = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", package = "nprint-types", optional = true }
+nprint-templates = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", package = "nprint-templates", optional = true }
 oauth2 = "5.0.0"
 openidconnect = "3.5"
 parking_lot = "0.12"
@@ -40,11 +40,11 @@ webauthn-rs = "0.5"
 [features]
 default = ["ui"]
 ui = ["dioxus", "dioxus-motion"]
-nPrint-core = ["nprint-core"]
-nPrint-protocols = ["nprint-protocols"]
-nPrint-types = ["nprint-types"]
-nPrint-templates = ["nprint-templates"]
-advanced = ["nPrint-core", "nPrint-protocols", "nPrint-types", "nPrint-templates", "rustbus"]
+nprint-core = ["nprint-core"]
+nprint-protocols = ["nprint-protocols"]
+nprint-types = ["nprint-types"]
+nprint-templates = ["nprint-templates"]
+advanced = ["nprint-core", "nprint-protocols", "nprint-types", "nprint-templates", "rustbus"]
 
 [profile.release]
 opt-level = 3
