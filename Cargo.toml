@@ -10,7 +10,7 @@ repository = "https://github.com/murphsicles/zip"
 dioxus = { version = "0.6", features = ["desktop", "mobile", "skia"], optional = true }
 dioxus-motion = { version = "0.2", optional = true }
 keyring = "2.3"
-nprint = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", optional = true }
+nprint = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1.0", optional = true }
 oauth2 = { git = "https://github.com/ramosbugs/oauth2-rs", tag = "v0.4" }
 openidconnect = "3.5"
 parking_lot = "0.12"
@@ -20,7 +20,7 @@ rand = "0.8"
 reqwest = { version = "0.12", features = ["json"] }
 rust-sv = { git = "https://github.com/murphsicles/rust-sv", tag = "v0.4.3" }
 rust_decimal = "1.35"
-rustbus = { git = "https://github.com/murphsicles/RustBus", tag = "v0.1", optional = true }
+rustbus = { git = "https://github.com/murphsicles/RustBus", tag = "v0.1.1", optional = true }
 secrecy = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
