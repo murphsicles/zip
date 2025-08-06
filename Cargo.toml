@@ -7,7 +7,7 @@ license = "Open BSV"
 repository = "https://github.com/murphsicles/zip"
 
 [dependencies]
-dioxus = { version = "0.6.3", features = ["desktop", "mobile", "skia"], optional = true }
+dioxus = { version = "0.6.3", features = ["desktop", "mobile"], optional = true }
 dioxus-motion = { version = "0.3.1", optional = true }
 keyring = "3.6.3"
 nprint-core = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1.0", package = "nprint-core", optional = true }
