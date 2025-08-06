@@ -14,7 +14,7 @@ nprint = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1.0", option
 oauth2 = "5.0.0"
 openidconnect = "3.5"
 parking_lot = "0.12"
-paymail = { git = "https://github.com/murphsicles/paymail-rs", tag = "v0.1.0" }
+paymail-rs = { git = "https://github.com/murphsicles/paymail-rs", tag = "v0.1.0" }
 qrcode = "0.13"
 rand = "0.8"
 reqwest = { version = "0.12", features = ["json"] }
