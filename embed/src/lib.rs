@@ -14,13 +14,13 @@ pub struct SwipeButtonProps {
     pub recipient: String,
     pub amount: u64,
     pub private_key: Vec<u8>,
-    pub endpoint: Option<String>,  // Optional RustBus endpoint for on-chain data
+    pub endpoint: Option<String>, // Optional RustBus endpoint for on-chain data
 }
 
 #[component]
 pub fn SwipeButton(props: SwipeButtonProps) -> Element {
     let storage = use_memo(|| Arc::new(ZipStorage::new().unwrap()));
-    let tx_manager = use_memo(|| TransactionManager::new(Arc::clone(&storage), None));  // No RustBus for embed by default
+    let tx_manager = use_memo(|| TransactionManager::new(Arc::clone(&storage), None)); // No RustBus for embed by default
     let is_swiped = use_signal(|| false);
 
     let gesture = use_gesture(|g| {
