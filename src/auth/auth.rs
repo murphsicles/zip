@@ -35,7 +35,10 @@ impl AuthManager {
     pub async fn start_oauth(&self, user_id: &str) -> Result<(String, String), ZipError> {
         self.rate_limiter.check(user_id).await?;
         let (url, csrf) = self.oauth.start_oauth_flow();
-        let _ = self.telemetry.track_auth_event(user_id, "oauth_start", true).await;
+        let _ = self
+            .telemetry
+            .track_auth_event(user_id, "oauth_start", true)
+            .await;
         Ok((url, csrf))
     }
 
@@ -48,13 +51,19 @@ impl AuthManager {
         csrf_token: String,
     ) -> Result<Uuid, ZipError> {
         self.rate_limiter.check(user_id).await?;
-        let result = self.oauth.complete_oauth_flow(code, pkce_verifier, csrf_token).await;
+        let result = self
+            .oauth
+            .complete_oauth_flow(code, pkce_verifier, csrf_token)
+            .await;
         let success = result.is_ok();
         if let Ok((user_id, email)) = &result {
             let sanitized_email = Security::sanitize_input(email)?;
             Security::validate_email(&sanitized_email)?;
             self.session.create(*user_id, sanitized_email).await?;
-            let _ = self.telemetry.track_auth_event(&user_id.to_string(), "oauth_complete", success).await;
+            let _ = self
+                .telemetry
+                .track_auth_event(&user_id.to_string(), "oauth_complete", success)
+                .await;
         }
         result.map(|(user_id, _)| user_id)
     }
@@ -67,7 +76,10 @@ impl AuthManager {
     ) -> Result<(RequestChallengeResponse, PasskeyAuthenticationState), ZipError> {
         self.rate_limiter.check(&user_id.to_string()).await?;
         let result = self.passkey.start_authentication(user_id, totp_code).await;
-        let _ = self.telemetry.track_auth_event(&user_id.to_string(), "passkey_start", result.is_ok()).await;
+        let _ = self
+            .telemetry
+            .track_auth_event(&user_id.to_string(), "passkey_start", result.is_ok())
+            .await;
         result
     }
 
@@ -92,7 +104,10 @@ impl AuthManager {
             Security::validate_email(&sanitized_email)?;
             self.session.create(user_id, sanitized_email).await?;
         }
-        let _ = self.telemetry.track_auth_event(&user_id.to_string(), "passkey_complete", success).await;
+        let _ = self
+            .telemetry
+            .track_auth_event(&user_id.to_string(), "passkey_complete", success)
+            .await;
         result
     }
 
@@ -106,7 +121,10 @@ impl AuthManager {
         self.rate_limiter.check(&user_id.to_string()).await?;
         let result = self.session.clear(user_id).await;
         let success = result.is_ok();
-        let _ = self.telemetry.track_auth_event(&user_id.to_string(), "logout", success).await;
+        let _ = self
+            .telemetry
+            .track_auth_event(&user_id.to_string(), "logout", success)
+            .await;
         result
     }
 }
