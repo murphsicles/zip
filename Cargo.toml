@@ -10,7 +10,11 @@ repository = "https://github.com/murphsicles/zip"
 dioxus = { version = "0.6", features = ["desktop", "mobile", "skia"], optional = true }
 dioxus-motion = { version = "0.2", optional = true }
 keyring = "2.3"
-nprint = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1.0", optional = true }
+nprint-core = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", package = "nPrint-core", optional = true }
+nprint-protocols = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", package = "nPrint-protocols", optional = true }
+nprint-types = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", package = "nPrint-types", optional = true }
+nprint-templates = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1", package = "nPrint-templates", optional = true }
+oauth2 = { git = "https://github.com/ramosbugs/oauth2-rs", tag = "v0.4" }
 oauth2 = "5.0.0"
 openidconnect = "3.5"
 parking_lot = "0.12"
