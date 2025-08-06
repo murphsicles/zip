@@ -7,7 +7,7 @@ license = "Open BSV"
 repository = "https://github.com/murphsicles/zip"
 
 [dependencies]
-dioxus = { version = "0.6", features = ["web", "skia"] }
+dioxus = { version = "0.6.3", features = ["web", "skia"] }
 paymail-rs = { git = "https://github.com/murphsicles/paymail-rs", tag = "v0.1.0" }
 serde = { version = "1.0", features = ["derive"] }
 sv = { git = "https://github.com/murphsicles/rust-sv", tag = "v0.4.3" }
