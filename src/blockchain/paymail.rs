@@ -40,7 +40,11 @@ impl PaymailManager {
     }
 
     /// Resolves PayMail to payment script and amount.
-    pub async fn resolve_paymail(&self, handle: &str, amount: u64) -> Result<(Script, u64), ZipError> {
+    pub async fn resolve_paymail(
+        &self,
+        handle: &str,
+        amount: u64,
+    ) -> Result<(Script, u64), ZipError> {
         let guard = self.client.lock().await;
         let req = PaymentRequest {
             amount: Some(amount),
@@ -50,7 +54,10 @@ impl PaymailManager {
             .get_payment_destination(handle, req)
             .await
             .map_err(|e| ZipError::Blockchain(e.to_string()))?;
-        let _ = self.telemetry.track_payment_event("anonymous", "resolve_paymail", amount, true).await;
+        let _ = self
+            .telemetry
+            .track_payment_event("anonymous", "resolve_paymail", amount, true)
+            .await;
         Ok((output.script, output.amount.unwrap_or(amount)))
     }
 
@@ -72,10 +79,16 @@ impl PaymailManager {
                 .send_p2p_tx(handle, tx_hex, metadata, reference)
                 .await
                 .map_err(|e| ZipError::Blockchain(e.to_string()))?;
-            let _ = self.telemetry.track_payment_event("anonymous", "send_p2p_tx", 0, true).await;
+            let _ = self
+                .telemetry
+                .track_payment_event("anonymous", "send_p2p_tx", 0, true)
+                .await;
             Ok(txid)
         } else {
-            let _ = self.telemetry.track_payment_event("anonymous", "send_p2p_tx_fallback", 0, true).await;
+            let _ = self
+                .telemetry
+                .track_payment_event("anonymous", "send_p2p_tx_fallback", 0, true)
+                .await;
             Ok("fallback_txid".to_string())
         }
     }
@@ -101,10 +114,14 @@ impl PaymailManager {
 
         // Store default alias
         new_aliases.insert(default_alias.clone());
-        let serialized = bincode::serialize(&new_aliases).map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let serialized =
+            bincode::serialize(&new_aliases).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
 
-        let _ = self.telemetry.track_payment_event(&user_id.to_string(), "create_default_alias", 0, true).await;
+        let _ = self
+            .telemetry
+            .track_payment_event(&user_id.to_string(), "create_default_alias", 0, true)
+            .await;
 
         // Handle bespoke alias (free if first, 5+ digits, non-excluded)
         if let Some(prefix) = bespoke_prefix {
@@ -112,9 +129,18 @@ impl PaymailManager {
             let price = self.config.get_prefix_price(prefix, is_first);
             let bespoke_alias = format!("{}@{}", prefix, self.config.domain);
             new_aliases.insert(bespoke_alias.clone());
-            let serialized = bincode::serialize(&new_aliases).map_err(|e| ZipError::Blockchain(e.to_string()))?;
+            let serialized = bincode::serialize(&new_aliases)
+                .map_err(|e| ZipError::Blockchain(e.to_string()))?;
             self.storage.store_user_data(user_id, &serialized)?;
-            let _ = self.telemetry.track_payment_event(&user_id.to_string(), "create_bespoke_alias", price.to_u64().unwrap_or(0), true).await;
+            let _ = self
+                .telemetry
+                .track_payment_event(
+                    &user_id.to_string(),
+                    "create_bespoke_alias",
+                    price.to_u64().unwrap_or(0),
+                    true,
+                )
+                .await;
             Ok((bespoke_alias, price))
         } else {
             Ok((default_alias, Decimal::ZERO))
@@ -122,7 +148,11 @@ impl PaymailManager {
     }
 
     /// Creates a paid PayMail alias, requiring payment to 000@zip.io.
-    pub async fn create_paid_alias(&self, user_id: Uuid, prefix: &str) -> Result<(String, Decimal), ZipError> {
+    pub async fn create_paid_alias(
+        &self,
+        user_id: Uuid,
+        prefix: &str,
+    ) -> Result<(String, Decimal), ZipError> {
         self.rate_limiter.check(&user_id.to_string()).await?;
         self.config.validate_prefix(prefix)?;
         let aliases = self.get_user_aliases(user_id).await?;
@@ -133,10 +163,19 @@ impl PaymailManager {
         // Store pending alias
         let mut new_aliases = aliases;
         new_aliases.insert(alias.clone());
-        let serialized = bincode::serialize(&new_aliases).map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let serialized =
+            bincode::serialize(&new_aliases).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
 
-        let _ = self.telemetry.track_payment_event(&user_id.to_string(), "create_paid_alias", price.to_u64().unwrap_or(0), true).await;
+        let _ = self
+            .telemetry
+            .track_payment_event(
+                &user_id.to_string(),
+                "create_paid_alias",
+                price.to_u64().unwrap_or(0),
+                true,
+            )
+            .await;
         Ok((alias, price))
     }
 
@@ -148,7 +187,10 @@ impl PaymailManager {
             return Err(ZipError::Blockchain("Alias not found".to_string()));
         }
         // Notify PayMail service (placeholder)
-        let _ = self.telemetry.track_payment_event(&user_id.to_string(), "confirm_alias", 0, true).await;
+        let _ = self
+            .telemetry
+            .track_payment_event(&user_id.to_string(), "confirm_alias", 0, true)
+            .await;
         Ok(())
     }
 
@@ -159,7 +201,10 @@ impl PaymailManager {
         let aliases = data
             .map(|d| bincode::deserialize(&d).unwrap_or_default())
             .unwrap_or_default();
-        let _ = self.telemetry.track_payment_event(&user_id.to_string(), "get_user_aliases", 0, true).await;
+        let _ = self
+            .telemetry
+            .track_payment_event(&user_id.to_string(), "get_user_aliases", 0, true)
+            .await;
         Ok(aliases)
     }
 }
