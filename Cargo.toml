@@ -10,9 +10,6 @@ repository = "https://github.com/murphsicles/zip"
 async-graphql = { version = "7.0.7", optional = true }
 dioxus = { version = "0.6.3", features = ["web", "desktop", "mobile"], optional = true }
 dioxus-motion = { version = "0.3.1", optional = true }
-gio-sys = "0.21.0"
-glib-sys = "0.21.0"
-gobject-sys = "0.21.0"
 keyring = "3.6.3"
 nprint-core = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1.0", package = "nprint-core", optional = true }
 nprint-protocols = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1.0", package = "nprint-protocols", optional = true }
