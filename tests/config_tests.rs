@@ -22,8 +22,14 @@ mod tests {
         let config = EnvConfig::load().unwrap();
         assert_eq!(config.oauth_client_id, "google-client-id");
         assert_eq!(config.oauth_client_secret, "google-client-secret");
-        assert_eq!(config.oauth_auth_url, "https://accounts.google.com/o/oauth2/v2/auth");
-        assert_eq!(config.oauth_token_url, "https://oauth2.googleapis.com/token");
+        assert_eq!(
+            config.oauth_auth_url,
+            "https://accounts.google.com/o/oauth2/v2/auth"
+        );
+        assert_eq!(
+            config.oauth_token_url,
+            "https://oauth2.googleapis.com/token"
+        );
         assert_eq!(config.oauth_redirect_uri, "zip://oauth/callback");
         assert_eq!(config.rustbus_endpoint, "http://localhost:8080");
         assert_eq!(config.log_level, "info");
