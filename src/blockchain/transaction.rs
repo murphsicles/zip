@@ -1,6 +1,6 @@
 use parking_lot::RwLock;
-use rand::rngs::OsRng;
 use rand::RngCore;
+use rand::rngs::OsRng;
 use rust_sv::private_key::PrivateKey;
 use rust_sv::script::Script;
 use rust_sv::transaction::{Transaction, TxIn, TxOut};
@@ -58,7 +58,10 @@ impl TransactionManager {
         let mut tx = Transaction::new();
         let mut input_amount = 0u64;
 
-        for utxo in utxos.iter().take_while(|_| input_amount < (utxo_value * num_utxos as u64)) {
+        for utxo in utxos
+            .iter()
+            .take_while(|_| input_amount < (utxo_value * num_utxos as u64))
+        {
             let input = TxIn::new(&utxo.txid, utxo.vout, utxo.script.clone(), 0xFFFFFFFF);
             tx.add_input(input);
             input_amount += utxo.amount;
@@ -86,7 +89,8 @@ impl TransactionManager {
         let priv_key = PrivateKey::from_bytes(priv_key_bytes.expose_secret().clone())?;
         tx.sign(&priv_key)?;
 
-        let serialized = bincode::serialize(&outputs).map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let serialized =
+            bincode::serialize(&outputs).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.cache_utxos(user_id, &serialized)?;
 
         Ok(outputs)
@@ -109,7 +113,10 @@ impl TransactionManager {
 
         // Optimized coin selection (minimal UTXOs, prefer small for low fees)
         let sorted_utxos = utxos.iter().sorted_by_key(|u| u.amount).collect::<Vec<_>>();
-        for utxo in sorted_utxos.iter().take_while(|_| input_amount < amount + fee) {
+        for utxo in sorted_utxos
+            .iter()
+            .take_while(|_| input_amount < amount + fee)
+        {
             let input = TxIn::new(&utxo.txid, utxo.vout, utxo.script.clone(), 0xFFFFFFFF);
             tx.add_input(input);
             input_amount += utxo.amount;
@@ -144,7 +151,8 @@ impl TransactionManager {
                 amount: balance,
                 script: Script::default(),
             }];
-            let serialized = bincode::serialize(&utxos).map_err(|e| ZipError::Blockchain(e.to_string()))?;
+            let serialized =
+                bincode::serialize(&utxos).map_err(|e| ZipError::Blockchain(e.to_string()))?;
             self.storage.cache_utxos(user_id, &serialized)?;
             Ok(utxos)
         } else {
