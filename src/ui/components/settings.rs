@@ -7,7 +7,9 @@ use crate::auth::AuthManager;
 use crate::blockchain::{PaymailManager, WalletManager};
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
-use crate::ui::components::{ErrorDisplay, Notification, SwipeButton, Theme, ThemeProvider, ThemeSwitcher};
+use crate::ui::components::{
+    ErrorDisplay, Notification, SwipeButton, Theme, ThemeProvider, ThemeSwitcher,
+};
 use crate::ui::styles::global_styles;
 use crate::utils::auth::AuthUtils;
 use crate::utils::validation::Validation;
@@ -20,7 +22,9 @@ pub fn Settings() -> Element {
     let auth = use_context::<AuthManager>();
     let auth_utils = use_context::<AuthUtils>();
     let user_id = use_signal(|| Uuid::new_v4());
-    let currencies = ["USD", "GBP", "EUR", "JPY", "CAD", "AUD", "CHF", "CNY", "SEK", "NZD"];
+    let currencies = [
+        "USD", "GBP", "EUR", "JPY", "CAD", "AUD", "CHF", "CNY", "SEK", "NZD",
+    ];
     let selected_currency = use_signal(|| "USD".to_string());
     let selected_theme = use_signal(|| Theme::Light);
     let paymail_aliases = use_signal(|| HashSet::new());
@@ -43,8 +47,15 @@ pub fn Settings() -> Element {
                 selected_currency.set(currency);
             }
             selected_theme.set(
-                prefs.get("theme")
-                    .map(|t| if t == "dark" { Theme::Dark } else { Theme::Light })
+                prefs
+                    .get("theme")
+                    .map(|t| {
+                        if t == "dark" {
+                            Theme::Dark
+                        } else {
+                            Theme::Light
+                        }
+                    })
                     .unwrap_or(Theme::Light),
             );
             two_fa_enabled.set(prefs.get("2fa_enabled").is_some());
@@ -91,10 +102,14 @@ pub fn Settings() -> Element {
                 },
             );
             let serialized = bincode::serialize(&prefs).unwrap();
-            storage.store_user_data(*user_id.read(), &serialized).unwrap();
+            storage
+                .store_user_data(*user_id.read(), &serialized)
+                .unwrap();
             notification.set(Some("Currency updated".to_string()));
         } else {
-            error.set(Some(ZipError::Validation("Invalid currency code".to_string())));
+            error.set(Some(ZipError::Validation(
+                "Invalid currency code".to_string(),
+            )));
         }
     };
 
@@ -113,7 +128,9 @@ pub fn Settings() -> Element {
             },
         );
         let serialized = bincode::serialize(&prefs).unwrap();
-        storage.store_user_data(*user_id.read(), &serialized).unwrap();
+        storage
+            .store_user_data(*user_id.read(), &serialized)
+            .unwrap();
         notification.set(Some("Theme updated".to_string()));
     };
 
@@ -127,14 +144,19 @@ pub fn Settings() -> Element {
                     Err(e) => error.set(Some(e)),
                 }
             } else {
-                error.set(Some(ZipError::Validation("PayMail prefix must be 5 or more digits".to_string())));
+                error.set(Some(ZipError::Validation(
+                    "PayMail prefix must be 5 or more digits".to_string(),
+                )));
             }
         });
     };
 
     let on_pay_alias = move || async move {
         if *two_fa_enabled.read() {
-            match auth_utils.validate_totp(*user_id.read(), &two_fa_code.read()).await {
+            match auth_utils
+                .validate_totp(*user_id.read(), &two_fa_code.read())
+                .await
+            {
                 Ok(true) => {}
                 Ok(false) | Err(_) => {
                     error.set(Some(ZipError::Auth("Invalid 2FA code".to_string())));
@@ -142,16 +164,23 @@ pub fn Settings() -> Element {
                 }
             }
         }
-        let (alias, price) = match paymail.create_paid_alias(*user_id.read(), &new_alias.read()).await {
+        let (alias, price) = match paymail
+            .create_paid_alias(*user_id.read(), &new_alias.read())
+            .await
+        {
             Ok(result) => result,
             Err(e) => {
                 error.set(Some(e));
                 return;
             }
         };
-        let satoshis = (price * Decimal::from(100_000_000) / wallet.fetch_price(&selected_currency.read()).await.unwrap_or(Decimal::ONE))
-            .to_u64()
-            .unwrap_or(0);
+        let satoshis = (price * Decimal::from(100_000_000)
+            / wallet
+                .fetch_price(&selected_currency.read())
+                .await
+                .unwrap_or(Decimal::ONE))
+        .to_u64()
+        .unwrap_or(0);
         match Validation::validate_amount(satoshis) {
             Ok(()) => {}
             Err(e) => {
@@ -161,7 +190,10 @@ pub fn Settings() -> Element {
         }
         match paymail.resolve_paymail("000@zip.io", satoshis).await {
             Ok((script, _)) => {
-                match wallet.send_payment(*user_id.read(), script, satoshis, 1000).await {
+                match wallet
+                    .send_payment(*user_id.read(), script, satoshis, 1000)
+                    .await
+                {
                     Ok(_) => {
                         if paymail.confirm_alias(*user_id.read(), &alias).await.is_ok() {
                             let mut aliases = paymail_aliases.read().clone();
@@ -171,7 +203,9 @@ pub fn Settings() -> Element {
                             alias_price.set(Decimal::ZERO);
                             notification.set(Some(format!("Alias purchased: {}", alias)));
                         } else {
-                            error.set(Some(ZipError::Blockchain("Failed to confirm alias".to_string())));
+                            error.set(Some(ZipError::Blockchain(
+                                "Failed to confirm alias".to_string(),
+                            )));
                         }
                     }
                     Err(e) => error.set(Some(e)),
@@ -184,7 +218,10 @@ pub fn Settings() -> Element {
     let on_primary_paymail_change = move |alias: String| {
         spawn(async move {
             if *two_fa_enabled.read() {
-                match auth_utils.validate_totp(*user_id.read(), &two_fa_code.read()).await {
+                match auth_utils
+                    .validate_totp(*user_id.read(), &two_fa_code.read())
+                    .await
+                {
                     Ok(true) => {}
                     Ok(false) | Err(_) => {
                         error.set(Some(ZipError::Auth("Invalid 2FA code".to_string())));
@@ -205,7 +242,10 @@ pub fn Settings() -> Element {
                 storage.store_user_data(*user_id.read(), b"").unwrap();
                 notification.set(Some("2FA disabled".to_string()));
             } else {
-                match auth_utils.generate_totp(*user_id.read(), &primary_paymail.read()).await {
+                match auth_utils
+                    .generate_totp(*user_id.read(), &primary_paymail.read())
+                    .await
+                {
                     Ok((secret, qr)) => {
                         qr_code.set(qr);
                         two_fa_secret.set(Some(secret));
@@ -220,7 +260,10 @@ pub fn Settings() -> Element {
     let on_verify_two_fa = move |_| {
         spawn(async move {
             if let Some(secret) = &*two_fa_secret.read() {
-                match auth_utils.validate_totp(*user_id.read(), &two_fa_code.read()).await {
+                match auth_utils
+                    .validate_totp(*user_id.read(), &two_fa_code.read())
+                    .await
+                {
                     Ok(true) => {
                         two_fa_enabled.set(true);
                         let mut prefs = HashMap::new();
@@ -234,7 +277,9 @@ pub fn Settings() -> Element {
                             },
                         );
                         let serialized = bincode::serialize(&prefs).unwrap();
-                        storage.store_user_data(*user_id.read(), &serialized).unwrap();
+                        storage
+                            .store_user_data(*user_id.read(), &serialized)
+                            .unwrap();
                         two_fa_secret.set(None);
                         qr_code.set(String::new());
                         notification.set(Some("2FA enabled".to_string()));
@@ -302,4 +347,4 @@ pub fn Settings() -> Element {
             }
         }
     }
-                     }
+}
