@@ -28,11 +28,17 @@ pub fn AuthForm() -> Element {
 
     let on_passkey_login = move |_| async move {
         is_loading.set(true);
-        match auth.start_passkey_authentication(*user_id.read(), Some(&totp_code.read())).await {
+        match auth
+            .start_passkey_authentication(*user_id.read(), Some(&totp_code.read()))
+            .await
+        {
             Ok((challenge, state)) => {
                 // Prompt biometric and complete
                 let cred = PublicKeyCredential::default(); // Placeholder
-                match auth.complete_passkey_authentication(*user_id.read(), cred, state).await {
+                match auth
+                    .complete_passkey_authentication(*user_id.read(), cred, state)
+                    .await
+                {
                     Ok(_) => {
                         notification.set(Some("Login successful".to_string()));
                         use_router().push(Route::DashboardRoute);
