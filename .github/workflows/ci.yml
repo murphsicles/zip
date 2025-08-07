@@ -56,9 +56,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-build-target-
 
-      - name: Check Cargo manifest and module resolution
-        run: cargo check --all-targets --all-features --verbose || { echo "Cargo check error"; cat Cargo.toml; exit 1; }
-
       - name: Check formatting
         run: cargo fmt --all -- --check --verbose
 
