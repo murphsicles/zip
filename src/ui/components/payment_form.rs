@@ -22,13 +22,21 @@ pub fn PaymentForm() -> Element {
 
     let on_submit = move |_| async move {
         if recipient.read().is_empty() || *amount.read() == 0 {
-            error.set(Some(ZipError::Blockchain("Invalid recipient or amount".to_string())));
+            error.set(Some(ZipError::Blockchain(
+                "Invalid recipient or amount".to_string(),
+            )));
             return;
         }
         is_loading.set(true);
-        match paymail.resolve_paymail(&recipient.read(), *amount.read()).await {
+        match paymail
+            .resolve_paymail(&recipient.read(), *amount.read())
+            .await
+        {
             Ok((script, resolved_amount)) => {
-                match wallet.send_payment(*user_id.read(), script, resolved_amount, 1000).await {
+                match wallet
+                    .send_payment(*user_id.read(), script, resolved_amount, 1000)
+                    .await
+                {
                     Ok(txid) => {
                         notification.set(Some(format!("Payment sent: TXID {}", txid)));
                         recipient.set(String::new());
