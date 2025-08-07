@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 
-use crate::ui::theme::Theme;
 use crate::ui::styles::global_styles;
+use crate::ui::theme::Theme;
 
 #[derive(Props, PartialEq)]
 pub struct ThemeSwitcherProps {
