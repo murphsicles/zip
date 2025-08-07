@@ -7,7 +7,10 @@ use crate::auth::AuthManager;
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
 use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
-use crate::ui::components::{Auth, AuthCallback, Dashboard, History, Home, Logout, NavBar, PaymentForm, Profile, Settings, SwipeButton, WalletOverview};
+use crate::ui::components::{
+    Auth, AuthCallback, Dashboard, History, Home, Logout, NavBar, PaymentForm, Profile, Settings,
+    SwipeButton, WalletOverview,
+};
 use crate::ui::styles::global_styles;
 use crate::ui::transitions::fade_in;
 use crate::utils::session::Session;
