@@ -8,7 +8,7 @@ repository = "https://github.com/murphsicles/zip"
 
 [dependencies]
 async-graphql = { version = "7.0.7", optional = true }
-dioxus = { version = "0.6.3", features = ["desktop", "mobile"], optional = true }
+dioxus = { version = "0.6.3", features = ["web", "desktop", "mobile"], optional = true }
 dioxus-motion = { version = "0.3.1", optional = true }
 gio-sys = "0.21.0"
 glib-sys = "0.21.0"
@@ -22,7 +22,7 @@ oauth2 = "5.0.0"
 openidconnect = "4.0.1"
 parking_lot = "0.12.4"
 paymail-rs = { git = "https://github.com/murphsicles/paymail-rs", tag = "v0.1.0" }
-proc-macro-crate = "2.0.2"
+proc-macro-crate = "3.1.0"
 qrcode = "0.14.1"
 rand = "0.9.2"
 reqwest = { version = "0.12", features = ["json"] }
@@ -36,8 +36,6 @@ sv = { git = "https://github.com/murphsicles/rust-sv", tag = "v0.4.3" }
 thiserror = "2.0.12"
 time = { version = "0.3", features = ["formatting", "parsing"] }
 tokio = { version = "1.41", features = ["full"] }
-toml_datetime = "0.7.0"
-toml_edit = "0.23.3"
 totp-rs = "5.0"
 tracing = "0.1"
 tracing-subscriber = "0.3"
