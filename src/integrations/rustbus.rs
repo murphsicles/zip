@@ -24,7 +24,8 @@ impl RustBusIntegrator {
     /// Initializes RustBus client with endpoint from environment config.
     pub fn new() -> Result<Self, ZipError> {
         let config = EnvConfig::load()?;
-        let client = Client::new(&config.rustbus_endpoint).map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let client = Client::new(&config.rustbus_endpoint)
+            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
         Ok(Self {
             client: Mutex::new(client),
         })
