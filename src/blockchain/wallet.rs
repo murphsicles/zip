@@ -87,10 +87,14 @@ impl WalletManager {
             balance_converted: Decimal::ZERO,
             derivation_path: format!("m/44'/0'/0'/0/{}", index),
         };
-        let serialized = bincode::serialize(&data).map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let serialized =
+            bincode::serialize(&data).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         let user_id = Uuid::new_v4();
         self.storage.store_user_data(user_id, &serialized)?;
-        let _ = self.telemetry.track_payment_event(&user_id.to_string(), "address_generated", 0, true).await;
+        let _ = self
+            .telemetry
+            .track_payment_event(&user_id.to_string(), "address_generated", 0, true)
+            .await;
         Ok(address)
     }
 
@@ -121,7 +125,11 @@ impl WalletManager {
     }
 
     /// Updates and caches balance in satoshis and converted currency.
-    pub async fn update_balance(&self, user_id: Uuid, currency: &str) -> Result<(u64, Decimal), ZipError> {
+    pub async fn update_balance(
+        &self,
+        user_id: Uuid,
+        currency: &str,
+    ) -> Result<(u64, Decimal), ZipError> {
         self.rate_limiter.check(&user_id.to_string()).await?;
         let address = self.get_address()?;
         let balance = if let Some(r) = &self.rustbus {
@@ -139,9 +147,13 @@ impl WalletManager {
             balance_converted,
             derivation_path: format!("m/44'/0'/0'/0/{}", *self.derivation_index.read()),
         };
-        let serialized = bincode::serialize(&data).map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let serialized =
+            bincode::serialize(&data).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
-        let _ = self.telemetry.track_payment_event(&user_id.to_string(), "balance_update", balance, true).await;
+        let _ = self
+            .telemetry
+            .track_payment_event(&user_id.to_string(), "balance_update", balance, true)
+            .await;
         Ok((balance, balance_converted))
     }
 
@@ -154,13 +166,19 @@ impl WalletManager {
         fee: u64,
     ) -> Result<String, ZipError> {
         self.rate_limiter.check(&user_id.to_string()).await?;
-        let result = self.tx_manager.build_payment_tx(user_id, recipient_script, amount, fee).await;
+        let result = self
+            .tx_manager
+            .build_payment_tx(user_id, recipient_script, amount, fee)
+            .await;
         let success = result.is_ok();
         let tx_id = match &result {
             Ok(tx) => tx.to_hex()?,
             Err(_) => "".to_string(),
         };
-        let _ = self.telemetry.track_payment_event(&user_id.to_string(), &tx_id, amount, success).await;
+        let _ = self
+            .telemetry
+            .track_payment_event(&user_id.to_string(), &tx_id, amount, success)
+            .await;
         result
     }
 }
