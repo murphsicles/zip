@@ -20,7 +20,10 @@ mod tests {
         let rustbus = None::<Arc<RustBusIntegrator>>;
         let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), rustbus));
         let user_id = Uuid::new_v4();
-        let result = tx_manager.pre_create_utxos(user_id, 5, 10000).block_on().unwrap();
+        let result = tx_manager
+            .pre_create_utxos(user_id, 5, 10000)
+            .block_on()
+            .unwrap();
         assert_eq!(result.len(), 5);
         let cached = storage.get_utxos(user_id).unwrap().unwrap();
         let utxos: Vec<TxOut> = bincode::deserialize(&cached).unwrap();
@@ -34,9 +37,15 @@ mod tests {
         let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), rustbus));
         let user_id = Uuid::new_v4();
         // Pre-create UTXOs
-        tx_manager.pre_create_utxos(user_id, 5, 10000).await.unwrap();
+        tx_manager
+            .pre_create_utxos(user_id, 5, 10000)
+            .await
+            .unwrap();
         let script = Script::default();
-        let result = tx_manager.build_payment_tx(user_id, script, 8000, 1000).await.unwrap();
+        let result = tx_manager
+            .build_payment_tx(user_id, script, 8000, 1000)
+            .await
+            .unwrap();
         assert!(!result.to_hex().unwrap().is_empty());
     }
 
@@ -94,7 +103,10 @@ mod tests {
         assert!(alias.starts_with("101@"));
         assert_eq!(price, Decimal::ZERO);
 
-        let (bespoke, price) = paymail.create_default_alias(user_id, Some("12345")).await.unwrap();
+        let (bespoke, price) = paymail
+            .create_default_alias(user_id, Some("12345"))
+            .await
+            .unwrap();
         assert_eq!(bespoke, "12345@zip.io");
         assert_eq!(price, Decimal::from(10));
     }
@@ -222,7 +234,9 @@ mod tests {
 
         // Test telemetry for send_p2p_tx
         let metadata = Value::Null;
-        let result = paymail.send_p2p_tx("mock@paymail.com", "mock_tx_hex", metadata, "ref").await;
+        let result = paymail
+            .send_p2p_tx("mock@paymail.com", "mock_tx_hex", metadata, "ref")
+            .await;
         assert!(result.is_ok());
     }
 }
