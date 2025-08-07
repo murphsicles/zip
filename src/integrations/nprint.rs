@@ -1,4 +1,4 @@
-use nprint::{Template, Runtime};
+use nprint::{Runtime, Template};
 use tokio::runtime::Handle;
 
 use crate::errors::ZipError;
@@ -22,24 +22,22 @@ impl NPrintIntegrator {
         node_url: &str,
     ) -> Result<String, ZipError> {
         let handle = Handle::current();
-        let txid = handle.spawn_blocking(move || {
-            let script = template.compile()?;
-            self.runtime.deploy(&script, node_url)
-        }).await
+        let txid = handle
+            .spawn_blocking(move || {
+                let script = template.compile()?;
+                self.runtime.deploy(&script, node_url)
+            })
+            .await
             .map_err(|e| ZipError::Blockchain(e.to_string()))??;
         Ok(txid)
     }
 
     /// Verifies a deployed script.
-    pub async fn verify_script(
-        &self,
-        txid: &str,
-        node_url: &str,
-    ) -> Result<bool, ZipError> {
+    pub async fn verify_script(&self, txid: &str, node_url: &str) -> Result<bool, ZipError> {
         let handle = Handle::current();
-        let valid = handle.spawn_blocking(move || {
-            self.runtime.verify(txid, node_url)
-        }).await
+        let valid = handle
+            .spawn_blocking(move || self.runtime.verify(txid, node_url))
+            .await
             .map_err(|e| ZipError::Blockchain(e.to_string()))??;
         Ok(valid)
     }
