@@ -6,8 +6,8 @@ use uuid::Uuid;
 use crate::errors::ZipError;
 
 pub struct ZipStorage {
-    db: Db,          // Embedded Sled KV store
-    secure: Entry,   // OS secure storage for private keys
+    db: Db,        // Embedded Sled KV store
+    secure: Entry, // OS secure storage for private keys
 }
 
 impl ZipStorage {
