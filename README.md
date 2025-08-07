@@ -7,7 +7,7 @@ High-performance, non-custodial, cross-platform BSV wallet with embeddable swipe
 - **PayMail Integration**: Supports alias creation, resolution, and P2P transactions via `paymail-rs`. 📧
 - **Hybrid Authentication**: OAuth 2.1 (Google) and Passkey support with 2FA (TOTP) for secure login. 🔒
 - **Real-Time Indexing**: RustBus integration for balance and transaction history queries. 🔍
-- **Cross-Platform UI**: Built with Dioxus v0.6 for desktop and mobile, featuring responsive components (`Home`, `Auth`, `Profile`, `Settings`, etc.). 📱
+- **Cross-Platform UI**: Built with Dioxus v0.6 for web, desktop, and mobile, featuring responsive components (`Home`, `Auth`, `Profile`, `Settings`, etc.). 📱
 - **Dynamic Theming**: Light/dark theme support with user-configurable settings. 🌗
 - **Swipe-to-Pay**: Embeddable `SwipeButton` for rapid payments in external projects. ⚡
 - **Pre-Created UTXOs**: Optimized for fast transaction building. 🚀
@@ -20,11 +20,23 @@ High-performance, non-custodial, cross-platform BSV wallet with embeddable swipe
 - **Session Management**: Robust session tracking with timestamps and telemetry. 🔐
 
 ## Installation 🛠️
-```shell
+```
 git clone https://github.com/murphsicles/zip
 cd zip
 cargo build --release
 ```
+
+### System Dependencies
+On Linux (e.g., Ubuntu), install the following system libraries for Dioxus and keyring support:
+```
+sudo apt-get update
+sudo apt-get install -y libglib2.0-dev libgtk-3-dev libwebkit2gtk-4.1-dev
+```
+On macOS, use Homebrew:
+```
+brew install glib gtk+3 webkitgtk
+```
+On Windows, no additional libraries are typically required for Dioxus’s desktop feature, but ensure the Windows Credential Manager is enabled for keyring.
 
 ## Usage ▶️
 1. Set environment variables in `.env`:
@@ -33,13 +45,13 @@ cargo build --release
    - `LOG_LEVEL` (e.g., `info`, `debug`) for logging.
    - `TELEMETRY_ENDPOINT` for optional external telemetry reporting.
 2. Run the app:
-```shell
+```
 cargo run
 ```
 
 ## Testing 🧪
 Run all tests to verify functionality:
-```shell
+```
 cargo test
 ```
 - **Auth Tests**: Covers OAuth, Passkey, 2FA, session management, and email validation (`tests/auth_tests.rs`).
@@ -50,7 +62,7 @@ cargo test
 
 ## Benchmarks 📈
 Run performance benchmarks:
-```shell
+```
 cargo bench
 ```
 
