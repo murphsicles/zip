@@ -15,8 +15,16 @@ pub fn App() -> Element {
     let config = EnvConfig::load().unwrap();
     let storage = Arc::new(ZipStorage::new().unwrap());
     let rustbus = Arc::new(RustBusIntegrator::new(&config.rustbus_endpoint).unwrap());
-    let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), Some(Arc::clone(&rustbus))));
-    let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus))).unwrap();
+    let tx_manager = Arc::new(TransactionManager::new(
+        Arc::clone(&storage),
+        Some(Arc::clone(&rustbus)),
+    ));
+    let wallet = WalletManager::new(
+        Arc::clone(&storage),
+        Arc::clone(&tx_manager),
+        Some(Arc::clone(&rustbus)),
+    )
+    .unwrap();
     let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
     let paymail = PaymailManager::new(PrivateKey::new(), Arc::clone(&storage));
     let selected_theme = use_signal(|| Theme::Light);
@@ -26,8 +34,15 @@ pub fn App() -> Element {
         if let Some(data) = storage.get_user_data(Uuid::new_v4()).unwrap() {
             let prefs: HashMap<String, String> = bincode::deserialize(&data).unwrap_or_default();
             selected_theme.set(
-                prefs.get("theme")
-                    .map(|t| if t == "dark" { Theme::Dark } else { Theme::Light })
+                prefs
+                    .get("theme")
+                    .map(|t| {
+                        if t == "dark" {
+                            Theme::Dark
+                        } else {
+                            Theme::Light
+                        }
+                    })
                     .unwrap_or(Theme::Light),
             );
         }
