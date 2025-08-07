@@ -1,5 +1,5 @@
 use tracing::{Level, Subscriber};
-use tracing_subscriber::{FmtSubscriber, EnvFilter};
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use crate::config::Config;
 use crate::errors::ZipError;
