@@ -7,17 +7,21 @@ license = "Open BSV"
 repository = "https://github.com/murphsicles/zip"
 
 [dependencies]
-dioxus = { version = "0.6.3", features = ["web"] }
+zip = { path = ".." }
+dioxus = { version = "0.6.3", features = ["web", "desktop", "mobile"], optional = true }
+dioxus-motion = { version = "0.3.1", optional = true }
+async-graphql = { version = "7.0.7", optional = true }
 paymail-rs = { git = "https://github.com/murphsicles/paymail-rs", tag = "v0.1.0" }
 serde = { version = "1.0", features = ["derive"] }
 sv = { git = "https://github.com/murphsicles/rust-sv", tag = "v0.4.3" }
 tokio = { version = "1.41", features = ["full"] }
-toml_datetime = "0.7.0"
-thiserror = "1.0"
-zip = { path = ".." }
+proc-macro-crate = "3.1.0"
+qrcode = "0.14.1"
+rand = "0.9.2"
+secrecy = "0.10.3"
+thiserror = "2.0.12"
 
-[profile.release]
-opt-level = 3
-lto = "thin"
-codegen-units = 1
-strip = true
+[features]
+default = ["ui"]
+ui = ["dioxus", "dioxus-motion", "zip/ui"]
+graphql = ["dep:async-graphql", "zip/graphql"]
