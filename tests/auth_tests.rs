@@ -46,9 +46,18 @@ mod tests {
         let csrf = "mock_csrf".to_string();
         // Simulate OAuth response with invalid email
         let invalid_email = "invalid_email<script>";
-        let result = auth.oauth.complete_oauth_flow(code, pkce_verifier, csrf).await;
+        let result = auth
+            .oauth
+            .complete_oauth_flow(code, pkce_verifier, csrf)
+            .await;
         if let Ok((user_id, email)) = result {
-            let result = auth.complete_oauth(email, PkceCodeVerifier::new("mock_verifier".to_string()), "mock_csrf".to_string()).await;
+            let result = auth
+                .complete_oauth(
+                    email,
+                    PkceCodeVerifier::new("mock_verifier".to_string()),
+                    "mock_csrf".to_string(),
+                )
+                .await;
             assert!(matches!(result, Err(ZipError::Validation(_))));
             assert!(!auth.is_authenticated(user_id).await);
         }
@@ -76,7 +85,10 @@ mod tests {
         let storage = Arc::new(ZipStorage::new().unwrap());
         let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
         let user_id = Uuid::new_v4();
-        let (challenge, _) = auth.passkey.start_registration(user_id, "test_user").unwrap();
+        let (challenge, _) = auth
+            .passkey
+            .start_registration(user_id, "test_user")
+            .unwrap();
         assert!(!challenge.public_key.challenge.is_empty());
     }
 
@@ -85,12 +97,20 @@ mod tests {
         let storage = Arc::new(ZipStorage::new().unwrap());
         let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
         let user_id = Uuid::new_v4();
-        let (challenge, state) = auth.passkey.start_registration(user_id, "test_user").unwrap();
+        let (challenge, state) = auth
+            .passkey
+            .start_registration(user_id, "test_user")
+            .unwrap();
         let cred = CreationPublicKeyCredential::default();
         let reg = auth.passkey.complete_registration(cred, state).unwrap();
-        let (auth_challenge, auth_state) = auth.start_passkey_authentication(user_id, Some("123456")).await.unwrap();
+        let (auth_challenge, auth_state) = auth
+            .start_passkey_authentication(user_id, Some("123456"))
+            .await
+            .unwrap();
         let auth_cred = PublicKeyCredential::default();
-        let result = auth.complete_passkey_authentication(user_id, auth_cred, auth_state).await;
+        let result = auth
+            .complete_passkey_authentication(user_id, auth_cred, auth_state)
+            .await;
         assert!(matches!(result, Err(ZipError::Passkey(_))));
         // Verify session creation
         assert!(auth.is_authenticated(user_id).await);
@@ -101,14 +121,25 @@ mod tests {
         let storage = Arc::new(ZipStorage::new().unwrap());
         let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
         let user_id = Uuid::new_v4();
-        let (challenge, state) = auth.passkey.start_registration(user_id, "test_user").unwrap();
+        let (challenge, state) = auth
+            .passkey
+            .start_registration(user_id, "test_user")
+            .unwrap();
         let cred = CreationPublicKeyCredential::default();
         let reg = auth.passkey.complete_registration(cred, state).unwrap();
-        let (auth_challenge, auth_state) = auth.start_passkey_authentication(user_id, Some("123456")).await.unwrap();
+        let (auth_challenge, auth_state) = auth
+            .start_passkey_authentication(user_id, Some("123456"))
+            .await
+            .unwrap();
         // Simulate session with invalid email
-        auth.session.create(user_id, "invalid_email<script>".to_string()).await.unwrap();
+        auth.session
+            .create(user_id, "invalid_email<script>".to_string())
+            .await
+            .unwrap();
         let auth_cred = PublicKeyCredential::default();
-        let result = auth.complete_passkey_authentication(user_id, auth_cred, auth_state).await;
+        let result = auth
+            .complete_passkey_authentication(user_id, auth_cred, auth_state)
+            .await;
         assert!(matches!(result, Err(ZipError::Validation(_))));
         assert!(auth.is_authenticated(user_id).await);
     }
@@ -126,7 +157,9 @@ mod tests {
         storage.store_user_data(user_id, &serialized).unwrap();
 
         // Test with invalid 2FA code
-        let result = auth.start_passkey_authentication(user_id, Some("wrong_code")).await;
+        let result = auth
+            .start_passkey_authentication(user_id, Some("wrong_code"))
+            .await;
         assert!(matches!(result, Err(ZipError::Passkey(_))));
 
         // Test with missing 2FA code
