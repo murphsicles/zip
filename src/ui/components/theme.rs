@@ -17,7 +17,8 @@ pub struct ThemeProps {
 #[component]
 pub fn ThemeProvider(props: ThemeProps) -> Element {
     let theme_styles = match props.theme {
-        Theme::Light => r#"
+        Theme::Light => {
+            r#"
             body { background-color: #fff; color: #333; }
             .navbar { background-color: #4caf50; }
             .nav-link { color: white; }
@@ -30,8 +31,10 @@ pub fn ThemeProvider(props: ThemeProps) -> Element {
             .error { background-color: #ffe6e6; color: #d32f2f; border-color: #f44336; }
             .notification.success { background-color: #e6ffed; color: #2e7d32; border-color: #4caf50; }
             .loading { background-color: #f0f0f0; color: #666; }
-        "#,
-        Theme::Dark => r#"
+        "#
+        }
+        Theme::Dark => {
+            r#"
             body { background-color: #1a1a1a; color: #ccc; }
             .navbar { background-color: #2e7d32; }
             .nav-link { color: #e0e0e0; }
@@ -44,7 +47,8 @@ pub fn ThemeProvider(props: ThemeProps) -> Element {
             .error { background-color: #4a1c1c; color: #ff6655; border-color: #b71c1c; }
             .notification.success { background-color: #1c4a1c; color: #4caf50; border-color: #2e7d32; }
             .loading { background-color: #3c3c3c; color: #999; }
-        "#,
+        "#
+        }
     };
 
     rsx! {
