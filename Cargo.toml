@@ -24,12 +24,12 @@ qrcode = "0.14.1"
 rand = "0.9.2"
 reqwest = { version = "0.12", features = ["json"] }
 rust_decimal = "1.35"
-rustbus = { git = "https://github.com/murphsicles/RustBus", tag = "v0.1.1", optional = true }
+rustbus = { git = "https://github.com/murphsicles/RustBus", tag = "v0.1.2", optional = true }
 secrecy = "0.10.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sled = "0.34"
-sv = { git = "https://github.com/murphsicles/rust-sv", tag = "v0.4.3" }
+sv = { git = "https://github.com/murphsicles/rust-sv", tag = "v0.4.4" }
 thiserror = "2.0.12"
 time = { version = "0.3", features = ["formatting", "parsing"] }
 tokio = { version = "1.41", features = ["full"] }
