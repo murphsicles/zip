@@ -7,3 +7,5 @@ pub mod styles;
 
 #[cfg(feature = "ui")]
 pub use components::theme;
+#[cfg(feature = "ui")]
+pub use router::Route;
