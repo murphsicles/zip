@@ -1,26 +1,26 @@
 #[cfg(feature = "ui")]
-mod app;
+pub mod app;
 #[cfg(feature = "ui")]
-mod auth_form;
+pub mod auth;
 #[cfg(feature = "ui")]
-mod dashboard;
+pub mod dashboard;
 #[cfg(feature = "ui")]
-mod nav;
+pub mod nav;
 #[cfg(feature = "ui")]
-mod payment_form;
+pub mod payment_form;
 #[cfg(feature = "ui")]
-mod settings;
+pub mod settings;
 #[cfg(feature = "ui")]
-mod swipe_button;
+pub mod swipe_button;
 #[cfg(feature = "ui")]
-mod theme;
+pub mod theme;
 #[cfg(feature = "ui")]
-mod theme_switcher;
+pub mod theme_switcher;
 
 #[cfg(feature = "ui")]
 pub use app::App;
 #[cfg(feature = "ui")]
-pub use auth_form::{AuthForm, ErrorDisplay, Loading, Notification};
+pub use auth::Auth;
 #[cfg(feature = "ui")]
 pub use dashboard::Dashboard;
 #[cfg(feature = "ui")]
