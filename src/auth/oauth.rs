@@ -10,8 +10,9 @@ use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
 
+#[derive(Clone)]
 pub struct OAuthManager {
-    client: BasicClient,
+    client: Arc<BasicClient>,
     storage: Arc<ZipStorage>,
 }
 
@@ -32,7 +33,10 @@ impl OAuthManager {
         .set_redirect_uri(config.oauth_redirect_uri.parse().map_err(|_| {
             ZipError::OAuth("Invalid redirect URI".to_string().into())
         })?);
-        Ok(Self { client, storage })
+        Ok(Self {
+            client: Arc::new(client),
+            storage,
+        })
     }
 
     /// Starts OAuth flow, returns auth URL and CSRF token.
