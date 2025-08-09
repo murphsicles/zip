@@ -101,7 +101,8 @@ impl WalletManager {
         self.storage.store_user_data(user_id, &serialized)?;
         let _ = self
             .telemetry
-            .track_payment_event(&user_id.to_string(), "address_generated", 0, true);
+            .track_payment_event(&user_id.to_string(), "address_generated", 0, true)
+            .await;
         Ok(address)
     }
 
@@ -159,7 +160,8 @@ impl WalletManager {
         self.storage.store_user_data(user_id, &serialized)?;
         let _ = self
             .telemetry
-            .track_payment_event(&user_id.to_string(), "balance_update", balance, true);
+            .track_payment_event(&user_id.to_string(), "balance_update", balance, true)
+            .await;
         Ok((balance, balance_converted))
     }
 
@@ -183,7 +185,8 @@ impl WalletManager {
             .unwrap_or(Ok(String::new()))?;
         let _ = self
             .telemetry
-            .track_payment_event(&user_id.to_string(), &tx_id, amount, success);
+            .track_payment_event(&user_id.to_string(), &tx_id, amount, success)
+            .await;
         result
     }
 }
