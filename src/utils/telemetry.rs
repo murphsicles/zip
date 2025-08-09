@@ -27,7 +27,7 @@ impl Telemetry {
     }
 
     /// Tracks an authentication event (e.g., login success/failure) and sends to endpoint if configured.
-    pub fn track_auth_event(&self, user_id: &str, event: &str, success: bool) -> Result<(), ZipError> {
+    pub async fn track_auth_event(&self, user_id: &str, event: &str, success: bool) -> Result<(), ZipError> {
         if !self.enabled {
             return Ok(());
         }
@@ -45,16 +45,18 @@ impl Telemetry {
                 "success": success,
                 "timestamp": chrono::Utc::now().to_rfc3339(),
             });
-            // Note: Non-async send; consider async client if needed
-            return Err(ZipError::Network(
-                "Non-async telemetry not implemented".to_string().into(),
-            ));
+            client
+                .post(endpoint)
+                .json(&payload)
+                .send()
+                .await
+                .map_err(|e| ZipError::Network(e))?;
         }
         Ok(())
     }
 
     /// Tracks a payment event (e.g., transaction success/failure) and sends to endpoint if configured.
-    pub fn track_payment_event(
+    pub async fn track_payment_event(
         &self,
         user_id: &str,
         tx_id: &str,
@@ -82,10 +84,12 @@ impl Telemetry {
                 "success": success,
                 "timestamp": chrono::Utc::now().to_rfc3339(),
             });
-            // Note: Non-async send; consider async client if needed
-            return Err(ZipError::Network(
-                "Non-async telemetry not implemented".to_string().into(),
-            ));
+            client
+                .post(endpoint)
+                .json(&payload)
+                .send()
+                .await
+                .map_err(|e| ZipError::Network(e))?;
         }
         Ok(())
     }
