@@ -1,12 +1,14 @@
 use keyring::Entry;
 use secrecy::{ExposeSecret, Secret};
-use sled::{Db, Tree};
+use sled::Db;
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::errors::ZipError;
 
+#[derive(Clone)]
 pub struct ZipStorage {
-    db: Db,        // Embedded Sled KV store
+    db: Arc<Db>,   // Embedded Sled KV store
     secure: Entry, // OS secure storage for private keys
 }
 
@@ -15,7 +17,10 @@ impl ZipStorage {
     pub fn new() -> Result<Self, ZipError> {
         let db = sled::open("zip_db")?;
         let secure = Entry::new("zip", "wallet_keys")?;
-        Ok(Self { db, secure })
+        Ok(Self {
+            db: Arc::new(db),
+            secure,
+        })
     }
 
     /// Stores user data (e.g., PayMail, auth metadata) in Sled.
@@ -31,7 +36,7 @@ impl ZipStorage {
     }
 
     /// Stores private key in OS secure storage.
-    pub fn store_private_key(&self, key: Secret<Vec<u8>>) -> Result<(), ZipError> {
+    pub fn store_private_key(&self, key: &Secret<Vec<u8>>) -> Result<(), ZipError> {
         self.secure.set_password(key.expose_secret())?;
         Ok(())
     }
