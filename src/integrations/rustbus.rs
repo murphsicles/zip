@@ -1,10 +1,37 @@
-use rustbus::{Client, Query};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use crate::config::EnvConfig;
 use crate::errors::ZipError;
+
+// Placeholder structs until actual rustbus API is clarified
+#[derive(Clone)]
+struct Client;
+
+impl Client {
+    fn new() -> Result<Self, String> {
+        Ok(Self)
+    }
+
+    async fn execute<T: for<'de> Deserialize<'de>>(&self, _query: Query) -> Result<T, String> {
+        Err("Not implemented".to_string())
+    }
+}
+
+#[derive(Clone)]
+struct Query;
+
+impl Query {
+    fn balance(_address: &str) -> Self {
+        Self
+    }
+
+    fn tx_history(_user_id: String) -> Self {
+        Self
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 struct BalanceResponse {
@@ -16,18 +43,18 @@ struct TxHistoryResponse {
     txs: Vec<String>,
 }
 
+#[derive(Clone)]
 pub struct RustBusIntegrator {
-    client: Mutex<Client>,
+    client: Arc<Mutex<Client>>,
 }
 
 impl RustBusIntegrator {
-    /// Initializes RustBus client with endpoint from environment config.
+    /// Initializes RustBus client.
     pub fn new() -> Result<Self, ZipError> {
-        let config = EnvConfig::load()?;
-        let client = Client::new(&config.rustbus_endpoint)
-            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let _config = EnvConfig::load()?;
+        let client = Client::new().map_err(|e| ZipError::Blockchain(e))?;
         Ok(Self {
-            client: Mutex::new(client),
+            client: Arc::new(Mutex::new(client)),
         })
     }
 
@@ -38,7 +65,7 @@ impl RustBusIntegrator {
         let response: BalanceResponse = guard
             .execute(query)
             .await
-            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+            .map_err(|e| ZipError::Blockchain(e))?;
         response
             .balance
             .ok_or_else(|| ZipError::Blockchain("No balance found".to_string()))
@@ -51,7 +78,7 @@ impl RustBusIntegrator {
         let response: TxHistoryResponse = guard
             .execute(query)
             .await
-            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+            .map_err(|e| ZipError::Blockchain(e))?;
         Ok(response.txs)
     }
 }
