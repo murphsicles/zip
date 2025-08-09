@@ -1,11 +1,11 @@
 use std::sync::Arc;
-use totp_rs::{Secret, TOTP};
+use totp_rs::{Algorithm, Secret, TOTP};
 use uuid::Uuid;
 
 use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
-use crate::utils::generate_salt;
+use crate::utils::misc::generate_salt;
 use crate::utils::session::Session;
 use crate::utils::telemetry::Telemetry;
 
