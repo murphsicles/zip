@@ -23,7 +23,10 @@ pub fn global_styles() -> &'static str {
         .nav-link { color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px; }
         .nav-link:hover { background-color: #388e3c; }
         select, input, button { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-        toggle { margin: 0 10px; }
+        toggle { display: inline-block; width: 40px; height: 20px; background-color: #ccc; border-radius: 10px; position: relative; cursor: pointer; }
+        toggle::after { content: ''; position: absolute; width: 18px; height: 18px; background-color: white; border-radius: 50%; top: 1px; left: 1px; transition: transform 0.2s; }
+        toggle:checked::after { transform: translateX(20px); }
+        toggle:checked { background-color: #4caf50; }
         @media (max-width: 600px) {
             .swipe-button { width: 100%; }
             .history-grid { grid-template-columns: 1fr; font-size: 12px; }
@@ -38,6 +41,6 @@ pub fn global_styles() -> &'static str {
 #[component]
 pub fn Styles() -> Element {
     rsx! {
-        style { "{global_styles()}" }
+        style { "{{{global_styles()}}}" }
     }
 }
