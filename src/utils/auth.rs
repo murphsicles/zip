@@ -35,7 +35,8 @@ impl AuthUtils {
                 let result = totp.check_current(code).map_err(|e| ZipError::Auth(e.to_string()))?;
                 let _ = self
                     .telemetry
-                    .track_auth_event(&user_id.to_string(), "totp_validation", result);
+                    .track_auth_event(&user_id.to_string(), "totp_validation", result)
+                    .await;
                 Ok(result)
             } else {
                 Ok(false)
@@ -54,7 +55,8 @@ impl AuthUtils {
         let secret_base32 = totp.get_secret_base32();
         let _ = self
             .telemetry
-            .track_auth_event(&user_id.to_string(), "totp_generate", true);
+            .track_auth_event(&user_id.to_string(), "totp_generate", true)
+            .await;
         Ok((secret_base32, qr_code))
     }
 }
