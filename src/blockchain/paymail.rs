@@ -57,7 +57,8 @@ impl PaymailManager {
             .map_err(|e| ZipError::Blockchain(e.to_string()))?;
         let _ = self
             .telemetry
-            .track_payment_event("anonymous", "resolve_paymail", amount, true);
+            .track_payment_event("anonymous", "resolve_paymail", amount, true)
+            .await;
         Ok((output.script, output.amount.unwrap_or(amount)))
     }
 
@@ -81,12 +82,14 @@ impl PaymailManager {
                 .map_err(|e| ZipError::Blockchain(e.to_string()))?;
             let _ = self
                 .telemetry
-                .track_payment_event("anonymous", "send_p2p_tx", 0, true);
+                .track_payment_event("anonymous", "send_p2p_tx", 0, true)
+                .await;
             Ok(txid)
         } else {
             let _ = self
                 .telemetry
-                .track_payment_event("anonymous", "send_p2p_tx_fallback", 0, true);
+                .track_payment_event("anonymous", "send_p2p_tx_fallback", 0, true)
+                .await;
             Ok("fallback_txid".to_string())
         }
     }
@@ -118,7 +121,8 @@ impl PaymailManager {
 
         let _ = self
             .telemetry
-            .track_payment_event(&user_id.to_string(), "create_default_alias", 0, true);
+            .track_payment_event(&user_id.to_string(), "create_default_alias", 0, true)
+            .await;
 
         // Handle bespoke alias (free if first, 5+ digits)
         if let Some(prefix) = bespoke_prefix {
@@ -145,7 +149,8 @@ impl PaymailManager {
                     "create_bespoke_alias",
                     price.to_u64().unwrap_or(0),
                     true,
-                );
+                )
+                .await;
             Ok((bespoke_alias, price))
         } else {
             Ok((default_alias, Decimal::ZERO))
@@ -188,7 +193,8 @@ impl PaymailManager {
                 "create_paid_alias",
                 price.to_u64().unwrap_or(0),
                 true,
-            );
+            )
+            .await;
         Ok((alias, price))
     }
 
@@ -202,7 +208,8 @@ impl PaymailManager {
         // Notify PayMail service (placeholder)
         let _ = self
             .telemetry
-            .track_payment_event(&user_id.to_string(), "confirm_alias", 0, true);
+            .track_payment_event(&user_id.to_string(), "confirm_alias", 0, true)
+            .await;
         Ok(())
     }
 
@@ -215,7 +222,8 @@ impl PaymailManager {
             .unwrap_or_default();
         let _ = self
             .telemetry
-            .track_payment_event(&user_id.to_string(), "get_user_aliases", 0, true);
+            .track_payment_event(&user_id.to_string(), "get_user_aliases", 0, true)
+            .await;
         Ok(aliases)
     }
 }
