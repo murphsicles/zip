@@ -1,9 +1,10 @@
 use dioxus::prelude::*;
+use dioxus_desktop;
 use tracing::info;
 
-use zip::config::env::EnvConfig;
-use zip::ui::components::App;
-use zip::utils::logging::setup_logging;
+use crate::config::env::EnvConfig;
+use crate::ui::components::App;
+use crate::utils::logging::setup_logging;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
