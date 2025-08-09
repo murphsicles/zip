@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
+
 use sv::bip32::{ChildNumber, ExtendedPrivateKey};
 use sv::script::Script;
 
@@ -30,12 +31,13 @@ pub struct WalletData {
     pub derivation_path: String,
 }
 
+#[derive(Clone)]
 pub struct WalletManager {
     storage: Arc<ZipStorage>,
     tx_manager: Arc<TransactionManager>,
     rustbus: Option<Arc<RustBusIntegrator>>,
-    hd_key: RwLock<ExtendedPrivateKey>,
-    derivation_index: RwLock<u32>,
+    hd_key: Arc<RwLock<ExtendedPrivateKey>>,
+    derivation_index: Arc<RwLock<u32>>,
     price_cache: Arc<Cache<String, Decimal>>,
     telemetry: Telemetry,
     rate_limiter: RateLimiter,
@@ -63,8 +65,8 @@ impl WalletManager {
             storage,
             tx_manager,
             rustbus,
-            hd_key: RwLock::new(hd_key),
-            derivation_index: RwLock::new(0),
+            hd_key: Arc::new(RwLock::new(hd_key)),
+            derivation_index: Arc::new(RwLock::new(0)),
             price_cache: Arc::new(Cache::new(300)), // 5min TTL
             telemetry: Telemetry::new(&config),
             rate_limiter: RateLimiter::new(5, 60), // 5 payments per minute
@@ -104,7 +106,7 @@ impl WalletManager {
     }
 
     /// Fetches BSV price in specified currency, caches for 5min.
-    async fn fetch_price(&self, currency: &str) -> Result<Decimal, ZipError> {
+    pub async fn fetch_price(&self, currency: &str) -> Result<Decimal, ZipError> {
         let cache_key = currency.to_string();
         if let Some(price) = self.price_cache.get(&cache_key).await {
             return Ok(price);
