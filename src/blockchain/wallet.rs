@@ -1,12 +1,18 @@
+use bincode;
 use parking_lot::RwLock;
 use reqwest::Client;
+use rust_decimal::prelude::FromPrimitive;
 use rust_decimal::Decimal;
+use secrecy::Secret;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use rust_sv::bip32::{ChildNumber, ExtendedPrivateKey};
+use sv::bip32::{ChildNumber, ExtendedPrivateKey};
+use sv::script::Script;
 
+use crate::blockchain::TransactionManager;
 use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::integrations::RustBusIntegrator;
@@ -16,7 +22,7 @@ use crate::utils::crypto::Crypto;
 use crate::utils::rate_limiter::RateLimiter;
 use crate::utils::telemetry::Telemetry;
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct WalletData {
     pub address: String,
     pub balance: u64,
@@ -47,9 +53,10 @@ impl WalletManager {
         let priv_key_bytes = storage.get_private_key().unwrap_or_else(|_| {
             let private_key = Crypto::generate_private_key()?;
             let seed = private_key.to_bytes();
-            let hd_key = ExtendedPrivateKey::new_seed(&seed, rust_sv::network::Network::Mainnet)?;
+            let hd_key =
+                ExtendedPrivateKey::new_seed(&seed, sv::network::Network::Mainnet).unwrap();
             let bytes = Secret::new(hd_key.to_bytes());
-            storage.store_private_key(bytes).unwrap();
+            storage.store_private_key(&bytes).unwrap();
             Secret::new(hd_key.to_bytes())
         });
         let hd_key = ExtendedPrivateKey::from_bytes(priv_key_bytes.expose_secret().clone())?;
@@ -93,8 +100,7 @@ impl WalletManager {
         self.storage.store_user_data(user_id, &serialized)?;
         let _ = self
             .telemetry
-            .track_payment_event(&user_id.to_string(), "address_generated", 0, true)
-            .await;
+            .track_payment_event(&user_id.to_string(), "address_generated", 0, true);
         Ok(address)
     }
 
@@ -118,7 +124,7 @@ impl WalletManager {
         let price = resp["bitcoin-sv"][currency.to_lowercase()]
             .as_f64()
             .ok_or(ZipError::Blockchain("Invalid price data".to_string()))?;
-        let price = Decimal::from_f64(price).unwrap_or_default();
+        let price = Decimal::try_from_f64(price).unwrap_or_default();
 
         self.price_cache.insert(cache_key, price).await;
         Ok(price)
@@ -152,8 +158,7 @@ impl WalletManager {
         self.storage.store_user_data(user_id, &serialized)?;
         let _ = self
             .telemetry
-            .track_payment_event(&user_id.to_string(), "balance_update", balance, true)
-            .await;
+            .track_payment_event(&user_id.to_string(), "balance_update", balance, true);
         Ok((balance, balance_converted))
     }
 
@@ -171,14 +176,13 @@ impl WalletManager {
             .build_payment_tx(user_id, recipient_script, amount, fee)
             .await;
         let success = result.is_ok();
-        let tx_id = match &result {
-            Ok(tx) => tx.to_hex()?,
-            Err(_) => "".to_string(),
-        };
+        let tx_id = result
+            .as_ref()
+            .map(|tx| tx.to_hex())
+            .unwrap_or(Ok(String::new()))?;
         let _ = self
             .telemetry
-            .track_payment_event(&user_id.to_string(), &tx_id, amount, success)
-            .await;
+            .track_payment_event(&user_id.to_string(), &tx_id, amount, success);
         result
     }
 }
