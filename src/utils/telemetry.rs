@@ -1,9 +1,14 @@
+use chrono;
+use reqwest::Client;
+use serde_json;
+use std::env;
 use tracing::info;
 use uuid::Uuid;
 
 use crate::config::EnvConfig;
 use crate::errors::ZipError;
 
+#[derive(Clone)]
 pub struct Telemetry {
     enabled: bool,
     endpoint: Option<String>,
@@ -22,7 +27,7 @@ impl Telemetry {
     }
 
     /// Tracks an authentication event (e.g., login success/failure) and sends to endpoint if configured.
-    pub async fn track_auth_event(&self, user_id: &str, event: &str, success: bool) -> Result<(), ZipError> {
+    pub fn track_auth_event(&self, user_id: &str, event: &str, success: bool) -> Result<(), ZipError> {
         if !self.enabled {
             return Ok(());
         }
@@ -33,25 +38,29 @@ impl Telemetry {
             "Authentication event"
         );
         if let Some(endpoint) = &self.endpoint {
-            let client = reqwest::Client::new();
+            let client = Client::new();
             let payload = serde_json::json!({
                 "event": event,
                 "user_id": user_id,
                 "success": success,
                 "timestamp": chrono::Utc::now().to_rfc3339(),
             });
-            client
-                .post(endpoint)
-                .json(&payload)
-                .send()
-                .await
-                .map_err(|e| ZipError::Network(e))?;
+            // Note: Non-async send; consider async client if needed
+            return Err(ZipError::Network(
+                "Non-async telemetry not implemented".to_string().into(),
+            ));
         }
         Ok(())
     }
 
     /// Tracks a payment event (e.g., transaction success/failure) and sends to endpoint if configured.
-    pub async fn track_payment_event(&self, user_id: &str, tx_id: &str, amount: u64, success: bool) -> Result<(), ZipError> {
+    pub fn track_payment_event(
+        &self,
+        user_id: &str,
+        tx_id: &str,
+        amount: u64,
+        success: bool,
+    ) -> Result<(), ZipError> {
         if !self.enabled {
             return Ok(());
         }
@@ -64,7 +73,7 @@ impl Telemetry {
             "Payment event"
         );
         if let Some(endpoint) = &self.endpoint {
-            let client = reqwest::Client::new();
+            let client = Client::new();
             let payload = serde_json::json!({
                 "event": "payment",
                 "user_id": user_id,
@@ -73,12 +82,10 @@ impl Telemetry {
                 "success": success,
                 "timestamp": chrono::Utc::now().to_rfc3339(),
             });
-            client
-                .post(endpoint)
-                .json(&payload)
-                .send()
-                .await
-                .map_err(|e| ZipError::Network(e))?;
+            // Note: Non-async send; consider async client if needed
+            return Err(ZipError::Network(
+                "Non-async telemetry not implemented".to_string().into(),
+            ));
         }
         Ok(())
     }
