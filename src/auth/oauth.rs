@@ -1,7 +1,9 @@
 use oauth2::basic::BasicClient;
-use oauth2::reqwest::async_http_client;
+use oauth2::reqwest::http_client;
 use oauth2::{AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope};
+use openidconnect::core::{CoreAdditionalClaims, CoreGenderClaim};
 use openidconnect::IdTokenClaims;
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::config::EnvConfig;
@@ -18,12 +20,18 @@ impl OAuthManager {
     pub fn new(storage: Arc<ZipStorage>) -> Result<Self, ZipError> {
         let config = EnvConfig::load()?;
         let client = BasicClient::new(
-            config.oauth_client_id,
-            Some(config.oauth_client_secret),
-            config.oauth_auth_url.parse()?,
-            Some(config.oauth_token_url.parse()?),
+            config.oauth_client_id.into(),
+            Some(config.oauth_client_secret.into()),
+            config.oauth_auth_url.parse().map_err(|_| {
+                ZipError::OAuth("Invalid auth URL".to_string().into())
+            })?,
+            Some(config.oauth_token_url.parse().map_err(|_| {
+                ZipError::OAuth("Invalid token URL".to_string().into())
+            })?),
         )
-        .set_redirect_uri(config.oauth_redirect_uri.parse()?);
+        .set_redirect_uri(config.oauth_redirect_uri.parse().map_err(|_| {
+            ZipError::OAuth("Invalid redirect URI".to_string().into())
+        })?);
         Ok(Self { client, storage })
     }
 
@@ -50,20 +58,25 @@ impl OAuthManager {
             .client
             .exchange_code(AuthorizationCode::new(code))
             .set_pkce_verifier(pkce_verifier)
-            .request_async(async_http_client)
+            .request_async(http_client)
             .await
             .map_err(|e| ZipError::OAuth(Box::new(e)))?;
 
-        let claims: IdTokenClaims = token
+        let claims: IdTokenClaims<CoreAdditionalClaims, CoreGenderClaim> = token
             .id_token()
-            .unwrap()
-            .claims(&self.client.id_token_verifier(), None)?;
-        let email = claims.email().unwrap().get(None).unwrap_or("unknown");
+            .ok_or_else(|| ZipError::OAuth("Missing ID token".to_string().into()))?
+            .claims(&self.client.id_token_verifier(), None)
+            .map_err(|e| ZipError::OAuth(Box::new(e)))?;
+        let email = claims
+            .email()
+            .and_then(|e| e.get(None))
+            .map(|e| e.to_string())
+            .unwrap_or("unknown".to_string());
 
         let user_id = Uuid::new_v4();
         self.storage.store_user_data(user_id, email.as_bytes())?;
 
-        Ok((user_id, email.to_string()))
+        Ok((user_id, email))
     }
 
     /// Clears session data for logout.
