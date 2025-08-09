@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use dioxus_router::prelude::*;
 use uuid::Uuid;
 
+use crate::ui::router::Route;
 use crate::ui::styles::global_styles;
 use crate::utils::session::Session;
 
@@ -11,14 +12,14 @@ pub fn NavBar() -> Element {
     let user_id = use_signal(|| Uuid::new_v4());
     let is_authenticated = use_signal(|| false);
 
-    use_effect(move || async move {
+    use_effect(to_owned![session, user_id, is_authenticated], || async move {
         is_authenticated.set(session.is_authenticated(*user_id.read()).await);
     });
 
     rsx! {
         nav {
             class: "navbar",
-            style: "{global_styles()}",
+            style: "{{{global_styles()}}}",
             Link { to: Route::Home, class: "nav-link", "Home" }
             if *is_authenticated.read() {
                 Link { to: Route::DashboardRoute, class: "nav-link", "Wallet" }
