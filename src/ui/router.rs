@@ -1,7 +1,11 @@
 use dioxus::prelude::*;
+use dioxus_router::components::RouteRenderer;
 use dioxus_router::prelude::*;
 use rust_decimal::Decimal;
+use std::sync::Arc;
 use uuid::Uuid;
+
+use sv::private_key::PrivateKey;
 
 use crate::auth::AuthManager;
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
@@ -12,7 +16,6 @@ use crate::ui::components::{
     SwipeButton, WalletOverview,
 };
 use crate::ui::styles::global_styles;
-use crate::ui::transitions::fade_in;
 use crate::utils::session::Session;
 
 #[derive(Routable, Clone)]
@@ -54,7 +57,7 @@ pub fn AppRouter() -> Element {
                 },
                 div {
                     class: "app-container",
-                    style: "{global_styles()} .app-container { display: flex; flex-direction: column; min-height: 100vh; } .content { flex: 1; padding: 20px; }",
+                    style: "{{{global_styles()}}} .app-container {{ display: flex; flex-direction: column; min-height: 100vh; }} .content {{ flex: 1; padding: 20px; }}",
                     NavBar {}
                     div { class: "content",
                         RouteRenderer {}
@@ -67,17 +70,17 @@ pub fn AppRouter() -> Element {
 
 #[component]
 fn Home() -> Element {
-    fade_in(rsx! { Home {} })
+    rsx! { Home {} }
 }
 
 #[component]
 fn Auth() -> Element {
-    fade_in(rsx! { Auth {} })
+    rsx! { Auth {} }
 }
 
 #[component]
 fn AuthCallbackRoute() -> Element {
-    fade_in(rsx! { AuthCallback {} })
+    rsx! { AuthCallback {} }
 }
 
 #[component]
@@ -85,13 +88,13 @@ fn DashboardRoute() -> Element {
     let session = use_context::<Session>();
     let user_id = use_signal(|| Uuid::new_v4());
 
-    use_effect(move || async move {
+    use_effect(to_owned![session, user_id], || async move {
         if !session.is_authenticated(*user_id.read()).await {
-            use_router().push(Route::Auth);
+            router().push(Route::Auth);
         }
     });
 
-    fade_in(rsx! { WalletOverview {} })
+    rsx! { WalletOverview {} }
 }
 
 #[component]
@@ -99,19 +102,19 @@ fn Payment() -> Element {
     let session = use_context::<Session>();
     let user_id = use_signal(|| Uuid::new_v4());
 
-    use_effect(move || async move {
+    use_effect(to_owned![session, user_id], || async move {
         if !session.is_authenticated(*user_id.read()).await {
-            use_router().push(Route::Auth);
+            router().push(Route::Auth);
         }
     });
 
-    fade_in(rsx! {
+    rsx! {
         PaymentForm {}
         SwipeButton {
             recipient: "example@paymail.com",
             amount: 1000
         }
-    })
+    }
 }
 
 #[component]
@@ -119,13 +122,13 @@ fn HistoryRoute() -> Element {
     let session = use_context::<Session>();
     let user_id = use_signal(|| Uuid::new_v4());
 
-    use_effect(move || async move {
+    use_effect(to_owned![session, user_id], || async move {
         if !session.is_authenticated(*user_id.read()).await {
-            use_router().push(Route::Auth);
+            router().push(Route::Auth);
         }
     });
 
-    fade_in(rsx! { History {} })
+    rsx! { History {} }
 }
 
 #[component]
@@ -133,13 +136,13 @@ fn SettingsRoute() -> Element {
     let session = use_context::<Session>();
     let user_id = use_signal(|| Uuid::new_v4());
 
-    use_effect(move || async move {
+    use_effect(to_owned![session, user_id], || async move {
         if !session.is_authenticated(*user_id.read()).await {
-            use_router().push(Route::Auth);
+            router().push(Route::Auth);
         }
     });
 
-    fade_in(rsx! { Settings {} })
+    rsx! { Settings {} }
 }
 
 #[component]
@@ -147,13 +150,13 @@ fn LogoutRoute() -> Element {
     let session = use_context::<Session>();
     let user_id = use_signal(|| Uuid::new_v4());
 
-    use_effect(move || async move {
+    use_effect(to_owned![session, user_id], || async move {
         if !session.is_authenticated(*user_id.read()).await {
-            use_router().push(Route::Auth);
+            router().push(Route::Auth);
         }
     });
 
-    fade_in(rsx! { Logout {} })
+    rsx! { Logout {} }
 }
 
 #[component]
@@ -161,11 +164,11 @@ fn ProfileRoute() -> Element {
     let session = use_context::<Session>();
     let user_id = use_signal(|| Uuid::new_v4());
 
-    use_effect(move || async move {
+    use_effect(to_owned![session, user_id], || async move {
         if !session.is_authenticated(*user_id.read()).await {
-            use_router().push(Route::Auth);
+            router().push(Route::Auth);
         }
     });
 
-    fade_in(rsx! { Profile {} })
+    rsx! { Profile {} }
 }
