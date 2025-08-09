@@ -40,7 +40,8 @@ impl AuthManager {
         let (url, csrf) = self.oauth.start_oauth_flow();
         let _ = self
             .telemetry
-            .track_auth_event(user_id, "oauth_start", true);
+            .track_auth_event(user_id, "oauth_start", true)
+            .await;
         Ok((url, csrf))
     }
 
@@ -64,7 +65,8 @@ impl AuthManager {
             self.session.create(*user_id, sanitized_email).await?;
             let _ = self
                 .telemetry
-                .track_auth_event(&user_id.to_string(), "oauth_complete", success);
+                .track_auth_event(&user_id.to_string(), "oauth_complete", success)
+                .await;
         }
         result.map(|(user_id, _)| user_id)
     }
@@ -79,7 +81,8 @@ impl AuthManager {
         let result = self.passkey.start_authentication(user_id, totp_code).await;
         let _ = self
             .telemetry
-            .track_auth_event(&user_id.to_string(), "passkey_start", result.is_ok());
+            .track_auth_event(&user_id.to_string(), "passkey_start", result.is_ok())
+            .await;
         result
     }
 
@@ -105,7 +108,8 @@ impl AuthManager {
             self.session.create(user_id, sanitized_email).await?;
             let _ = self
                 .telemetry
-                .track_auth_event(&user_id.to_string(), "passkey_complete", success);
+                .track_auth_event(&user_id.to_string(), "passkey_complete", success)
+                .await;
         }
         result
     }
@@ -122,7 +126,8 @@ impl AuthManager {
         let success = result.is_ok();
         let _ = self
             .telemetry
-            .track_auth_event(&user_id.to_string(), "logout", success);
+            .track_auth_event(&user_id.to_string(), "logout", success)
+            .await;
         result
     }
 }
