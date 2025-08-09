@@ -1,11 +1,21 @@
 pub mod auth;
 pub mod cache;
 pub mod crypto;
-pub mod error;
 pub mod logging;
-pub mod metrics;
+pub mod misc;
 pub mod rate_limiter;
 pub mod security;
 pub mod session;
 pub mod telemetry;
 pub mod validation;
+
+pub use auth::AuthUtils;
+pub use cache::Cache;
+pub use crypto::Crypto;
+pub use logging::setup_logging;
+pub use misc::generate_salt;
+pub use rate_limiter::RateLimiter;
+pub use security::Security;
+pub use session::Session;
+pub use telemetry::Telemetry;
+pub use validation::Validation;
