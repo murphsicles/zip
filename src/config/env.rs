@@ -12,6 +12,7 @@ pub struct EnvConfig {
     pub oauth_redirect_uri: String,
     pub rustbus_endpoint: String,
     pub log_level: String,
+    pub paymail_domain: Option<String>,
 }
 
 impl EnvConfig {
@@ -39,6 +40,7 @@ impl EnvConfig {
             log_level: env::var("LOG_LEVEL")
                 .map_err(|_| ZipError::Auth("Missing LOG_LEVEL".to_string()))
                 .unwrap_or("info".to_string()),
+            paymail_domain: env::var("PAYMAIL_DOMAIN").ok(),
         })
     }
 }
