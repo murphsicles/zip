@@ -8,7 +8,7 @@ use webauthn_rs::prelude::*;
 
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
-use crate::utils::generate_salt;
+use crate::utils::misc::generate_salt;
 
 #[derive(Clone)]
 pub struct PasskeyManager {
