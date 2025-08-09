@@ -4,7 +4,7 @@ use tracing::info;
 
 use crate::config::env::EnvConfig;
 use crate::ui::components::App;
-use crate::utils::logging::setup_logging;
+use crate::utils::misc::setup_logging;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
