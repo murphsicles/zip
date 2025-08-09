@@ -1,7 +1,7 @@
 use oauth2::PkceCodeVerifier;
 use std::sync::Arc;
 use uuid::Uuid;
-use webauthn_rs::prelude::{PasskeyAuthentication, RequestChallengeResponse};
+use webauthn_rs::prelude::{PasskeyAuthentication, PublicKeyCredential, RequestChallengeResponse};
 
 use crate::auth::{OAuthManager, PasskeyManager};
 use crate::config::EnvConfig;
@@ -40,8 +40,7 @@ impl AuthManager {
         let (url, csrf) = self.oauth.start_oauth_flow();
         let _ = self
             .telemetry
-            .track_auth_event(user_id, "oauth_start", true)
-            .await;
+            .track_auth_event(user_id, "oauth_start", true);
         Ok((url, csrf))
     }
 
@@ -65,8 +64,7 @@ impl AuthManager {
             self.session.create(*user_id, sanitized_email).await?;
             let _ = self
                 .telemetry
-                .track_auth_event(&user_id.to_string(), "oauth_complete", success)
-                .await;
+                .track_auth_event(&user_id.to_string(), "oauth_complete", success);
         }
         result.map(|(user_id, _)| user_id)
     }
@@ -81,8 +79,7 @@ impl AuthManager {
         let result = self.passkey.start_authentication(user_id, totp_code).await;
         let _ = self
             .telemetry
-            .track_auth_event(&user_id.to_string(), "passkey_start", result.is_ok())
-            .await;
+            .track_auth_event(&user_id.to_string(), "passkey_start", result.is_ok());
         result
     }
 
@@ -106,11 +103,10 @@ impl AuthManager {
             let sanitized_email = Security::sanitize_input(&email)?;
             Security::validate_email(&sanitized_email)?;
             self.session.create(user_id, sanitized_email).await?;
+            let _ = self
+                .telemetry
+                .track_auth_event(&user_id.to_string(), "passkey_complete", success);
         }
-        let _ = self
-            .telemetry
-            .track_auth_event(&user_id.to_string(), "passkey_complete", success)
-            .await;
         result
     }
 
@@ -126,8 +122,7 @@ impl AuthManager {
         let success = result.is_ok();
         let _ = self
             .telemetry
-            .track_auth_event(&user_id.to_string(), "logout", success)
-            .await;
+            .track_auth_event(&user_id.to_string(), "logout", success);
         result
     }
 }
