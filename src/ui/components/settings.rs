@@ -1,4 +1,6 @@
+use bincode;
 use dioxus::prelude::*;
+use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
@@ -38,7 +40,7 @@ pub fn Settings() -> Element {
     let error = use_signal(|| None::<ZipError>);
     let notification = use_signal(|| None::<String>);
 
-    use_effect(move || async move {
+    use_effect(to_owned![storage, paymail, user_id, selected_currency, selected_theme, paymail_aliases, primary_paymail, notification, error], || async move {
         // Load preferences
         if let Some(data) = storage.get_user_data(*user_id.read()).unwrap_or_default() {
             let prefs: HashMap<String, String> = bincode::deserialize(&data).unwrap_or_default();
@@ -86,7 +88,7 @@ pub fn Settings() -> Element {
     });
 
     let on_currency_change = move |evt: Event<FormData>| {
-        let new_currency = evt.value.clone();
+        let new_currency = evt.value().clone();
         if Validation::validate_currency(&new_currency).is_ok() {
             selected_currency.set(new_currency.clone());
             let mut prefs = HashMap::new();
@@ -107,7 +109,7 @@ pub fn Settings() -> Element {
                 .unwrap();
             notification.set(Some("Currency updated".to_string()));
         } else {
-            error.set(Some(ZipError::Validation(
+            error.set(Some(ZipError::Blockchain(
                 "Invalid currency code".to_string(),
             )));
         }
@@ -136,7 +138,7 @@ pub fn Settings() -> Element {
 
     let on_new_alias = move |evt: Event<FormData>| {
         spawn(async move {
-            let prefix = evt.value;
+            let prefix = evt.value();
             if Validation::validate_paymail_prefix(&prefix).is_ok() {
                 new_alias.set(prefix.clone());
                 match paymail.create_paid_alias(*user_id.read(), &prefix).await {
@@ -144,7 +146,7 @@ pub fn Settings() -> Element {
                     Err(e) => error.set(Some(e)),
                 }
             } else {
-                error.set(Some(ZipError::Validation(
+                error.set(Some(ZipError::Blockchain(
                     "PayMail prefix must be 5 or more digits".to_string(),
                 )));
             }
@@ -179,8 +181,8 @@ pub fn Settings() -> Element {
                 .fetch_price(&selected_currency.read())
                 .await
                 .unwrap_or(Decimal::ONE))
-        .to_u64()
-        .unwrap_or(0);
+            .to_u64()
+            .unwrap_or(0);
         match Validation::validate_amount(satoshis) {
             Ok(()) => {}
             Err(e) => {
@@ -296,7 +298,7 @@ pub fn Settings() -> Element {
         ThemeProvider { theme: *selected_theme.read(),
             div {
                 class: "settings-page",
-                style: "{global_styles()}",
+                style: "{{{global_styles()}}}",
                 div { class: "section",
                     h3 { "Default Currency" }
                     select { onchange: on_currency_change,
@@ -338,7 +340,7 @@ pub fn Settings() -> Element {
                     toggle { checked: *two_fa_enabled.read(), onchange: on_two_fa_toggle }
                     if let Some(_) = *two_fa_secret.read() {
                         img { src: "data:image/png;base64,{qr_code.read()}", alt: "2FA QR Code" }
-                        input { r#type: "text", placeholder: "Enter verification code", oninput: move |evt| two_fa_code.set(evt.value) }
+                        input { r#type: "text", placeholder: "Enter verification code", oninput: move |evt| two_fa_code.set(evt.value()) }
                         button { onclick: on_verify_two_fa, "Verify" }
                     }
                 }
@@ -347,4 +349,4 @@ pub fn Settings() -> Element {
             }
         }
     }
-}
+                }
