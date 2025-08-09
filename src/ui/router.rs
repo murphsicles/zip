@@ -3,9 +3,8 @@ use dioxus_router::components::RouteRenderer;
 use dioxus_router::prelude::*;
 use rust_decimal::Decimal;
 use std::sync::Arc;
-use uuid::Uuid;
-
 use sv::private_key::PrivateKey;
+use uuid::Uuid;
 
 use crate::auth::AuthManager;
 use crate::blockchain::{PaymailManager, TransactionManager, WalletManager};
