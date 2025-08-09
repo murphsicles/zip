@@ -10,7 +10,6 @@ use sv::private_key::PrivateKey;
 use sv::script::Script;
 use uuid::Uuid;
 
-use crate::config::paymail_config::PaymailConfig;
 use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
@@ -20,7 +19,7 @@ use crate::utils::telemetry::Telemetry;
 #[derive(Clone)]
 pub struct PaymailManager {
     client: Arc<Mutex<PaymailClient>>,
-    config: PaymailConfig,
+    domain: String,
     storage: Arc<ZipStorage>,
     next_prefix: Arc<Mutex<u64>>, // Sequential prefix starting from 101
     telemetry: Telemetry,
@@ -30,10 +29,10 @@ pub struct PaymailManager {
 impl PaymailManager {
     /// Initializes PayMail client with private key, configuration, and telemetry.
     pub fn new(priv_key: PrivateKey, storage: Arc<ZipStorage>) -> Self {
-        let config = EnvConfig::load().unwrap();
+        let config = EnvConfig::load().unwrap_or_default();
         Self {
             client: Arc::new(Mutex::new(PaymailClient::new(&priv_key))),
-            config: PaymailConfig::load(),
+            domain: config.paymail_domain.unwrap_or("zip.io".to_string()),
             storage,
             next_prefix: Arc::new(Mutex::new(101)),
             telemetry: Telemetry::new(&config),
@@ -58,8 +57,7 @@ impl PaymailManager {
             .map_err(|e| ZipError::Blockchain(e.to_string()))?;
         let _ = self
             .telemetry
-            .track_payment_event("anonymous", "resolve_paymail", amount, true)
-            .await;
+            .track_payment_event("anonymous", "resolve_paymail", amount, true);
         Ok((output.script, output.amount.unwrap_or(amount)))
     }
 
@@ -83,14 +81,12 @@ impl PaymailManager {
                 .map_err(|e| ZipError::Blockchain(e.to_string()))?;
             let _ = self
                 .telemetry
-                .track_payment_event("anonymous", "send_p2p_tx", 0, true)
-                .await;
+                .track_payment_event("anonymous", "send_p2p_tx", 0, true);
             Ok(txid)
         } else {
             let _ = self
                 .telemetry
-                .track_payment_event("anonymous", "send_p2p_tx_fallback", 0, true)
-                .await;
+                .track_payment_event("anonymous", "send_p2p_tx_fallback", 0, true);
             Ok("fallback_txid".to_string())
         }
     }
@@ -108,7 +104,7 @@ impl PaymailManager {
             *next += 1;
             p.to_string()
         };
-        let default_alias = format!("{}@{}", prefix, self.config.domain);
+        let default_alias = format!("{}@{}", prefix, self.domain);
 
         let aliases = self.get_user_aliases(user_id).await?;
         let is_first = aliases.is_empty();
@@ -122,14 +118,22 @@ impl PaymailManager {
 
         let _ = self
             .telemetry
-            .track_payment_event(&user_id.to_string(), "create_default_alias", 0, true)
-            .await;
+            .track_payment_event(&user_id.to_string(), "create_default_alias", 0, true);
 
-        // Handle bespoke alias (free if first, 5+ digits, non-excluded)
+        // Handle bespoke alias (free if first, 5+ digits)
         if let Some(prefix) = bespoke_prefix {
-            self.config.validate_prefix(prefix)?;
-            let price = self.config.get_prefix_price(prefix, is_first);
-            let bespoke_alias = format!("{}@{}", prefix, self.config.domain);
+            if prefix.is_empty() || prefix.contains('@') || prefix.contains('.') || prefix.len() < 5 {
+                return Err(ZipError::Blockchain("Invalid bespoke prefix".to_string()));
+            }
+            let price = if is_first && prefix == "101" {
+                Decimal::ZERO
+            } else {
+                match prefix.len() {
+                    5 => Decimal::from(10),
+                    _ => Decimal::from(5),
+                }
+            };
+            let bespoke_alias = format!("{}@{}", prefix, self.domain);
             new_aliases.insert(bespoke_alias.clone());
             let serialized = bincode::serialize(&new_aliases)
                 .map_err(|e| ZipError::Blockchain(e.to_string()))?;
@@ -141,8 +145,7 @@ impl PaymailManager {
                     "create_bespoke_alias",
                     price.to_u64().unwrap_or(0),
                     true,
-                )
-                .await;
+                );
             Ok((bespoke_alias, price))
         } else {
             Ok((default_alias, Decimal::ZERO))
@@ -156,11 +159,20 @@ impl PaymailManager {
         prefix: &str,
     ) -> Result<(String, Decimal), ZipError> {
         self.rate_limiter.check(&user_id.to_string()).await?;
-        self.config.validate_prefix(prefix)?;
+        if prefix.is_empty() || prefix.contains('@') || prefix.contains('.') || prefix.len() < 5 {
+            return Err(ZipError::Blockchain("Invalid prefix".to_string()));
+        }
         let aliases = self.get_user_aliases(user_id).await?;
         let is_first = aliases.is_empty();
-        let price = self.config.get_prefix_price(prefix, is_first);
-        let alias = format!("{}@{}", prefix, self.config.domain);
+        let price = if is_first && prefix == "101" {
+            Decimal::ZERO
+        } else {
+            match prefix.len() {
+                5 => Decimal::from(10),
+                _ => Decimal::from(5),
+            }
+        };
+        let alias = format!("{}@{}", prefix, self.domain);
 
         // Store pending alias
         let mut new_aliases = aliases;
@@ -176,8 +188,7 @@ impl PaymailManager {
                 "create_paid_alias",
                 price.to_u64().unwrap_or(0),
                 true,
-            )
-            .await;
+            );
         Ok((alias, price))
     }
 
@@ -191,8 +202,7 @@ impl PaymailManager {
         // Notify PayMail service (placeholder)
         let _ = self
             .telemetry
-            .track_payment_event(&user_id.to_string(), "confirm_alias", 0, true)
-            .await;
+            .track_payment_event(&user_id.to_string(), "confirm_alias", 0, true);
         Ok(())
     }
 
@@ -205,8 +215,7 @@ impl PaymailManager {
             .unwrap_or_default();
         let _ = self
             .telemetry
-            .track_payment_event(&user_id.to_string(), "get_user_aliases", 0, true)
-            .await;
+            .track_payment_event(&user_id.to_string(), "get_user_aliases", 0, true);
         Ok(aliases)
     }
-    }
+}
