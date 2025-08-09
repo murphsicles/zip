@@ -5,7 +5,10 @@ use webauthn_rs::prelude::PublicKeyCredential;
 
 use crate::auth::AuthManager;
 use crate::errors::ZipError;
+use crate::ui::components::{ErrorDisplay, Loading, Notification};
 use crate::ui::router::Route;
+use crate::ui::styles::global_styles;
+use crate::utils::security::Security;
 
 #[component]
 pub fn Auth() -> Element {
@@ -30,6 +33,19 @@ pub fn Auth() -> Element {
 
     let on_passkey_login = move |_| async move {
         is_loading.set(true);
+        let sanitized_email = match Security::sanitize_input(&email.read()) {
+            Ok(sanitized) => sanitized,
+            Err(e) => {
+                error.set(Some(e));
+                is_loading.set(false);
+                return;
+            }
+        };
+        if Security::validate_email(&sanitized_email).is_err() {
+            error.set(Some(ZipError::Validation("Invalid email format".to_string())));
+            is_loading.set(false);
+            return;
+        }
         match auth.start_passkey_authentication(*user_id.read(), Some(&totp_code.read())).await {
             Ok((challenge, state)) => {
                 let cred = PublicKeyCredential::default(); // Placeholder
@@ -49,6 +65,7 @@ pub fn Auth() -> Element {
     rsx! {
         div {
             class: "auth",
+            style: "{{{global_styles()}}}",
             h2 { class: "title", "Sign Up / Login" }
             button { onclick: on_oauth_signup, disabled: *is_loading.read(), "Sign Up with OAuth" }
             input {
@@ -64,14 +81,10 @@ pub fn Auth() -> Element {
                 disabled: *is_loading.read()
             }
             button { onclick: on_passkey_login, disabled: *is_loading.read(), "Login with Passkey" }
-            if let Some(err) = error.read().as_ref() {
-                div { class: "error", "{err}" }
-            }
-            if let Some(msg) = notification.read().as_ref() {
-                div { class: "notification", "{msg}" }
-            }
+            ErrorDisplay { error: *error.read() }
+            Notification { message: *notification.read(), is_success: true }
             if *is_loading.read() {
-                div { class: "loading", "Processing authentication" }
+                Loading { message: "Processing authentication".to_string() }
             }
         }
     }
