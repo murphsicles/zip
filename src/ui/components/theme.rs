@@ -12,6 +12,8 @@ pub enum Theme {
 pub struct ThemeProps {
     #[props(default = Theme::Light)]
     theme: Theme,
+    #[props(optional)]
+    children: Option<Element>,
 }
 
 #[component]
@@ -52,6 +54,11 @@ pub fn ThemeProvider(props: ThemeProps) -> Element {
     };
 
     rsx! {
-        style { "{global_styles()} {theme_styles}" }
+        div {
+            style: "{{{global_styles()}}} {theme_styles}",
+            if let Some(children) = props.children {
+                {children}
+            }
+        }
     }
 }
