@@ -1,5 +1,6 @@
-use crate::errors::ZipError;
 use regex::Regex;
+
+use crate::errors::ZipError;
 
 /// Input validation utilities for the Zip wallet.
 pub struct Validation;
