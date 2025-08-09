@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
-
 use sv::bip32::{ChildNumber, ExtendedPrivateKey};
 use sv::script::Script;
 
