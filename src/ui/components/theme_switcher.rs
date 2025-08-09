@@ -13,7 +13,7 @@ pub struct ThemeSwitcherProps {
 #[component]
 pub fn ThemeSwitcher(props: ThemeSwitcherProps) -> Element {
     let on_theme_change = move |evt: Event<FormData>| {
-        let new_theme = match evt.value.as_str() {
+        let new_theme = match evt.value().as_str() {
             "dark" => Theme::Dark,
             _ => Theme::Light,
         };
@@ -23,7 +23,7 @@ pub fn ThemeSwitcher(props: ThemeSwitcherProps) -> Element {
     rsx! {
         div {
             class: "theme-switcher",
-            style: "{global_styles()} .theme-switcher { display: flex; align-items: center; gap: 10px; padding: 10px; }",
+            style: "{{{global_styles()}}} .theme-switcher {{ display: flex; align-items: center; gap: 10px; padding: 10px; }}",
             label { "Theme: " }
             select { onchange: on_theme_change,
                 option { value: "light", selected: props.current_theme == Theme::Light, "Light" }
