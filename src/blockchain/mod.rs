@@ -1,7 +1,7 @@
-mod paymail;
-mod transaction;
-mod wallet;
+pub mod paymail;
+pub mod transaction;
+pub mod wallet;
 
 pub use paymail::PaymailManager;
 pub use transaction::TransactionManager;
-pub use wallet::WalletManager;
+pub use wallet::{WalletData, WalletManager};
