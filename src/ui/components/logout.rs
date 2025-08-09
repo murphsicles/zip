@@ -6,6 +6,7 @@ use uuid::Uuid;
 use crate::auth::AuthManager;
 use crate::errors::ZipError;
 use crate::ui::components::{ErrorDisplay, Loading, Notification};
+use crate::ui::router::Route;
 use crate::ui::styles::global_styles;
 
 #[component]
@@ -22,7 +23,7 @@ pub fn Logout() -> Element {
         match auth.logout(*user_id.read()).await {
             Ok(_) => {
                 notification.set(Some("Logged out successfully".to_string()));
-                use_router().push(Route::Home);
+                router().push(Route::Home);
             }
             Err(e) => error.set(Some(e)),
         }
@@ -32,8 +33,7 @@ pub fn Logout() -> Element {
     rsx! {
         div {
             class: "logout",
-            style: "{global_styles()} .logout { display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 10px; }",
-            style: "{animated}",
+            style: "{{{global_styles()}}} .logout {{ display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 10px; }} {animated}",
             h2 { class: "title", "Logout" }
             button { onclick: on_logout, disabled: *is_loading.read(), "Confirm Logout" }
             ErrorDisplay { error: *error.read() }
