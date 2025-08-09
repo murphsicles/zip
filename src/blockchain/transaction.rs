@@ -1,11 +1,14 @@
+use bincode;
+use itertools::Itertools;
 use parking_lot::RwLock;
-use rand::RngCore;
 use rand::rngs::OsRng;
-use rust_sv::private_key::PrivateKey;
-use rust_sv::script::Script;
-use rust_sv::transaction::{Transaction, TxIn, TxOut};
-use rust_sv::util::hash160;
-use tokio::sync::Arc;
+use rand::RngCore;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use sv::private_key::PrivateKey;
+use sv::script::Script;
+use sv::transaction::{Transaction, TxIn, TxOut};
+use sv::util::hash160;
 use uuid::Uuid;
 
 use crate::errors::ZipError;
