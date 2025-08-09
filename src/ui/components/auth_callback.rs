@@ -8,6 +8,7 @@ use crate::errors::ZipError;
 use crate::ui::components::{ErrorDisplay, Loading, Notification};
 use crate::ui::router::Route;
 use crate::ui::styles::global_styles;
+use crate::ui::transitions::fade_in;
 
 #[component]
 pub fn AuthCallback() -> Element {
@@ -40,7 +41,7 @@ pub fn AuthCallback() -> Element {
         is_loading.set(false);
     });
 
-    rsx! {
+    fade_in(cx, rsx! {
         div {
             class: "auth-callback",
             style: "{{{global_styles()}}} .auth-callback {{ display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 10px; }}",
@@ -51,5 +52,5 @@ pub fn AuthCallback() -> Element {
             ErrorDisplay { error: *error.read() }
             Notification { message: *notification.read(), is_success: true }
         }
-    }
+    })
 }
