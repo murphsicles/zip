@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::blockchain::WalletManager;
 use crate::integrations::RustBusIntegrator;
 use crate::ui::styles::global_styles;
+use crate::ui::transitions::fade_in;
 
 #[derive(Clone, Debug)]
 struct Tx {
@@ -128,7 +129,7 @@ pub fn History() -> Element {
         loading.set(false);
     });
 
-    rsx! {
+    fade_in(cx, rsx! {
         div {
             class: "history-grid",
             style: "{{{global_styles()}}} .history-grid {{ display: grid; grid-template-columns: 100px 120px 140px 200px 140px 200px; gap: 10px; overflow-y: auto; max-height: 80vh; font-size: 14px; padding: 10px; }} .history-grid > div {{ padding: 8px; border-bottom: 1px solid #ddd; }} .header {{ font-weight: bold; background-color: #f0f0f0; }} .delta-positive {{ color: green; }} .delta-negative {{ color: red; }} .txid-link {{ color: #007bff; text-decoration: none; }} .txid-link:hover {{ text-decoration: underline; }} @media (max-width: 600px) {{ .history-grid {{ grid-template-columns: 1fr; }} .history-grid > div {{ font-size: 12px; }} }}",
@@ -150,7 +151,7 @@ pub fn History() -> Element {
                 div { style: "grid-column: span 6; text-align: center;", "Loading..." }
             }
         }
-    }
+    })
 }
 
 async fn fetch_tx_details(txid: &str) -> Result<Value, reqwest::Error> {
