@@ -1,10 +1,12 @@
 use dioxus::prelude::*;
 use dioxus_motion::use_animated;
 use uuid::Uuid;
+use webauthn_rs::prelude::PublicKeyCredential;
 
 use crate::auth::AuthManager;
 use crate::errors::ZipError;
 use crate::ui::components::{ErrorDisplay, Loading, Notification};
+use crate::ui::router::Route;
 use crate::ui::styles::global_styles;
 
 #[component]
@@ -19,7 +21,7 @@ pub fn AuthForm() -> Element {
 
     let on_oauth_signup = move |_| async move {
         is_loading.set(true);
-        let (url, _) = auth.start_oauth();
+        let (url, _) = auth.start_oauth(&user_id.read().to_string()).await.unwrap_or_default();
         // Open url in system browser or embedded view
         // Assume callback handled in AuthCallback
         notification.set(Some("Redirecting to OAuth provider".to_string()));
@@ -41,7 +43,7 @@ pub fn AuthForm() -> Element {
                 {
                     Ok(_) => {
                         notification.set(Some("Login successful".to_string()));
-                        use_router().push(Route::DashboardRoute);
+                        router().push(Route::DashboardRoute);
                     }
                     Err(e) => error.set(Some(e)),
                 }
@@ -54,14 +56,13 @@ pub fn AuthForm() -> Element {
     rsx! {
         div {
             class: "auth-form",
-            style: "{global_styles()} .auth-form { display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 10px; }",
-            style: "{animated}",
+            style: "{{{global_styles()}}} .auth-form {{ display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 10px; }} {animated}",
             h2 { class: "title", "Sign Up / Login" }
             button { onclick: on_oauth_signup, disabled: *is_loading.read(), "Sign Up with OAuth" }
             input {
                 r#type: "text",
                 placeholder: "2FA Code (if enabled)",
-                oninput: move |evt| totp_code.set(evt.value),
+                oninput: move |evt| totp_code.set(evt.value()),
                 disabled: *is_loading.read()
             }
             button { onclick: on_passkey_login, disabled: *is_loading.read(), "Login with Passkey" }
