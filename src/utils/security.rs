@@ -1,5 +1,6 @@
 use rand::rngs::OsRng;
 use rand::RngCore;
+use regex::Regex;
 
 use crate::errors::ZipError;
 
@@ -30,7 +31,7 @@ impl Security {
 
     /// Validates email format (basic regex check).
     pub fn validate_email(email: &str) -> Result<(), ZipError> {
-        let re = regex::Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+        let re = Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
             .map_err(|e| ZipError::Validation(format!("Invalid regex: {}", e)))?;
         if re.is_match(email) {
             Ok(())
