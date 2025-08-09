@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::auth::Session;
 use crate::ui::router::Route;
 use crate::ui::styles::global_styles;
+use crate::ui::transitions::slide_right;
 
 #[component]
 pub fn Home() -> Element {
@@ -16,7 +17,7 @@ pub fn Home() -> Element {
         is_authenticated.set(session.is_authenticated(*user_id.read()).await);
     });
 
-    rsx! {
+    slide_right(cx, rsx! {
         div {
             class: "home",
             style: "{{{global_styles()}}} .home {{ display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 15px; }} .title {{ font-size: 2.5em; color: #333; }} .nav-link {{ color: #007bff; text-decoration: none; padding: 8px 16px; border-radius: 4px; }} .nav-link:hover {{ background-color: #e6f3ff; }} @media (max-width: 600px) {{ .title {{ font-size: 2em; }} }}",
@@ -30,5 +31,5 @@ pub fn Home() -> Element {
                 Link { to: Route::LogoutRoute, class: "nav-link", "Logout" }
             }
         }
-    }
+    })
 }
