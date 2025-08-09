@@ -6,10 +6,9 @@ use serde_json::Value;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use uuid::Uuid;
-
 use sv::private_key::PrivateKey;
 use sv::script::Script;
+use uuid::Uuid;
 
 use crate::config::paymail_config::PaymailConfig;
 use crate::config::EnvConfig;
@@ -18,11 +17,12 @@ use crate::storage::ZipStorage;
 use crate::utils::rate_limiter::RateLimiter;
 use crate::utils::telemetry::Telemetry;
 
+#[derive(Clone)]
 pub struct PaymailManager {
-    client: Mutex<PaymailClient>,
+    client: Arc<Mutex<PaymailClient>>,
     config: PaymailConfig,
     storage: Arc<ZipStorage>,
-    next_prefix: Mutex<u64>, // Sequential prefix starting from 101
+    next_prefix: Arc<Mutex<u64>>, // Sequential prefix starting from 101
     telemetry: Telemetry,
     rate_limiter: RateLimiter,
 }
@@ -32,10 +32,10 @@ impl PaymailManager {
     pub fn new(priv_key: PrivateKey, storage: Arc<ZipStorage>) -> Self {
         let config = EnvConfig::load().unwrap();
         Self {
-            client: Mutex::new(PaymailClient::new(&priv_key)),
+            client: Arc::new(Mutex::new(PaymailClient::new(&priv_key))),
             config: PaymailConfig::load(),
             storage,
-            next_prefix: Mutex::new(101),
+            next_prefix: Arc::new(Mutex::new(101)),
             telemetry: Telemetry::new(&config),
             rate_limiter: RateLimiter::new(5, 60), // 5 alias ops per minute
         }
@@ -209,4 +209,4 @@ impl PaymailManager {
             .await;
         Ok(aliases)
     }
-}
+    }
