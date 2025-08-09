@@ -10,8 +10,9 @@ use crate::errors::ZipError;
 use crate::storage::ZipStorage;
 use crate::utils::generate_salt;
 
+#[derive(Clone)]
 pub struct PasskeyManager {
-    webauthn: Webauthn,
+    webauthn: Arc<Webauthn>,
     storage: Arc<ZipStorage>,
 }
 
@@ -20,7 +21,10 @@ impl PasskeyManager {
     pub fn new(storage: Arc<ZipStorage>) -> Result<Self, ZipError> {
         let webauthn = WebauthnBuilder::new("zip-app", &Url::parse("https://zip-app.com")?)?
             .build()?;
-        Ok(Self { webauthn, storage })
+        Ok(Self {
+            webauthn: Arc::new(webauthn),
+            storage,
+        })
     }
 
     /// Starts Passkey registration for a user.
