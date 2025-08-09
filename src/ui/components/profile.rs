@@ -4,10 +4,11 @@ use dioxus_router::prelude::*;
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
-use crate::auth::{AuthManager, SessionManager};
+use crate::auth::{AuthManager, Session};
 use crate::blockchain::{PaymailManager, WalletManager};
 use crate::errors::ZipError;
 use crate::ui::components::{ErrorDisplay, Loading, Notification};
+use crate::ui::router::Route;
 use crate::ui::styles::global_styles;
 
 #[component]
@@ -15,7 +16,7 @@ pub fn Profile() -> Element {
     let auth = use_context::<AuthManager>();
     let wallet = use_context::<WalletManager>();
     let paymail = use_context::<PaymailManager>();
-    let session = use_context::<SessionManager>();
+    let session = use_context::<Session>();
     let user_id = use_signal(|| Uuid::new_v4());
     let email = use_signal(|| String::new());
     let primary_paymail = use_signal(|| String::new());
@@ -27,15 +28,15 @@ pub fn Profile() -> Element {
     let is_loading = use_signal(|| true);
     let animated = use_animated(|style| style.opacity(1.0).duration(0.5));
 
-    use_effect(move || async move {
+    use_effect(to_owned![auth, wallet, paymail, session, user_id, email, primary_paymail, balance, balance_converted, currency, error, notification, is_loading], || async move {
         // Check authentication
         if !session.is_authenticated(*user_id.read()).await {
-            use_router().push(Route::Auth);
+            router().push(Route::Auth);
             return;
         }
 
         // Load session data
-        match session.get_session(*user_id.read()).await {
+        match session.get(*user_id.read()).await {
             Ok(Some(session_data)) => {
                 email.set(session_data.email);
             }
@@ -71,8 +72,7 @@ pub fn Profile() -> Element {
     rsx! {
         div {
             class: "profile",
-            style: "{global_styles()} .profile { display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 15px; max-width: 400px; margin: auto; } .info { font-size: 1.1em; color: #444; } .balance-main { font-size: 2em; font-weight: bold; color: #333; } .balance-sub { font-size: 1.1em; color: #666; } @media (max-width: 600px) { .balance-main { font-size: 1.5em; } }",
-            style: "{animated}",
+            style: "{{{global_styles()}}} .profile {{ display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 15px; max-width: 400px; margin: auto; }} .info {{ font-size: 1.1em; color: #444; }} .balance-main {{ font-size: 2em; font-weight: bold; color: #333; }} .balance-sub {{ font-size: 1.1em; color: #666; }} @media (max-width: 600px) {{ .balance-main {{ font-size: 1.5em; }} }} {animated}",
             h2 { class: "title", "Your Profile" }
             div { class: "info", "Email: {email}" }
             div { class: "info", "Primary PayMail: {primary_paymail}" }
