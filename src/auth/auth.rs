@@ -1,5 +1,7 @@
-use std::collections::HashMap;
+use oauth2::PkceCodeVerifier;
+use std::sync::Arc;
 use uuid::Uuid;
+use webauthn_rs::prelude::{PasskeyAuthentication, RequestChallengeResponse};
 
 use crate::auth::{OAuthManager, PasskeyManager};
 use crate::config::EnvConfig;
@@ -10,6 +12,7 @@ use crate::utils::security::Security;
 use crate::utils::session::Session;
 use crate::utils::telemetry::Telemetry;
 
+#[derive(Clone)]
 pub struct AuthManager {
     oauth: OAuthManager,
     passkey: PasskeyManager,
@@ -73,7 +76,7 @@ impl AuthManager {
         &self,
         user_id: Uuid,
         totp_code: Option<&str>,
-    ) -> Result<(RequestChallengeResponse, PasskeyAuthenticationState), ZipError> {
+    ) -> Result<(RequestChallengeResponse, PasskeyAuthentication), ZipError> {
         self.rate_limiter.check(&user_id.to_string()).await?;
         let result = self.passkey.start_authentication(user_id, totp_code).await;
         let _ = self
@@ -88,7 +91,7 @@ impl AuthManager {
         &self,
         user_id: Uuid,
         cred: PublicKeyCredential,
-        state: PasskeyAuthenticationState,
+        state: PasskeyAuthentication,
     ) -> Result<(), ZipError> {
         self.rate_limiter.check(&user_id.to_string()).await?;
         let result = self.passkey.complete_authentication(cred, state);
