@@ -12,7 +12,7 @@ use crate::integrations::RustBusIntegrator;
 use crate::storage::ZipStorage;
 use crate::ui::components::{
     Auth, AuthCallback, Dashboard, History, Home, Logout, NavBar, PaymentForm, Profile, Settings,
-    SwipeButton, WalletOverview,
+    SwipeButton,
 };
 use crate::ui::styles::global_styles;
 use crate::utils::session::Session;
@@ -45,13 +45,13 @@ pub fn AppRouter() -> Element {
         Router::<Route> {
             ContextProvider {
                 value: {
-                    let storage = Arc::new(ZipStorage::new().unwrap());
-                    let rustbus = Arc::new(RustBusIntegrator::new().unwrap());
+                    let storage = Arc::new(ZipStorage::new().unwrap_or_default());
+                    let rustbus = Arc::new(RustBusIntegrator::new().unwrap_or_default());
                     let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), Some(Arc::clone(&rustbus))));
-                    let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus))).unwrap();
-                    let auth = AuthManager::new(Arc::clone(&storage)).unwrap();
+                    let wallet = WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus))).unwrap_or_default();
+                    let auth = AuthManager::new(Arc::clone(&storage)).unwrap_or_default();
                     let paymail = PaymailManager::new(PrivateKey::new(), Arc::clone(&storage));
-                    let session = Session::new(Arc::clone(&storage)).unwrap();
+                    let session = Session::new(Arc::clone(&storage)).unwrap_or_default();
                     (wallet, auth, paymail, tx_manager, rustbus, session)
                 },
                 div {
@@ -111,7 +111,8 @@ fn Payment() -> Element {
         PaymentForm {}
         SwipeButton {
             recipient: "example@paymail.com",
-            amount: 1000
+            amount: 1000,
+            "Pay 1000 satoshis to example@paymail.com"
         }
     }
 }
