@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use dioxus_motion::use_animated;
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
@@ -18,6 +19,7 @@ pub fn PaymentForm() -> Element {
     let error = use_signal(|| None::<ZipError>);
     let notification = use_signal(|| None::<String>);
     let is_loading = use_signal(|| false);
+    let animated = use_animated(|style| style.opacity(1.0).duration(0.5));
 
     let on_submit = move |_| async move {
         if recipient.read().is_empty() || *amount.read() == 0 {
@@ -61,7 +63,7 @@ pub fn PaymentForm() -> Element {
     rsx! {
         div {
             class: "payment-form",
-            style: "{{{global_styles()}}} .payment-form {{ display: flex; flex-direction: column; gap: 10px; padding: 20px; max-width: 400px; margin: auto; }}",
+            style: format!("{{{global_styles()}}} .payment-form {{ display: flex; flex-direction: column; gap: 10px; padding: 20px; max-width: 400px; margin: auto; }} {}", animated),
             h2 { class: "title", "Send Payment" }
             input {
                 r#type: "text",
