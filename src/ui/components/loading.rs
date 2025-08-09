@@ -16,12 +16,7 @@ pub fn Loading(props: LoadingProps) -> Element {
     rsx! {
         div {
             class: "loading",
-            style: "
-                {global_styles()}
-                .loading { display: flex; justify-content: center; align-items: center; padding: 20px; background-color: #f0f0f0; border-radius: 8px; font-size: 1.1em; color: #666; {animated} }
-                .loading::after { content: '...'; animation: dots 1.5s infinite; }
-                @keyframes dots { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
-            ",
+            style: "{{{global_styles()}}} .loading {{ display: flex; justify-content: center; align-items: center; padding: 20px; background-color: #f0f0f0; border-radius: 8px; font-size: 1.1em; color: #666; {animated} }} .loading::after {{ content: '...'; animation: dots 1.5s infinite; }} @keyframes dots {{ 0% {{ content: '.'; }} 33% {{ content: '..'; }} 66% {{ content: '...'; }} }}",
             "{props.message}"
         }
     }
