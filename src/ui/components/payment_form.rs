@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
-use dioxus_motion::use_animated;
 use rust_decimal::Decimal;
+use uuid::Uuid;
 
 use crate::blockchain::{PaymailManager, WalletManager};
 use crate::errors::ZipError;
@@ -18,7 +18,6 @@ pub fn PaymentForm() -> Element {
     let error = use_signal(|| None::<ZipError>);
     let notification = use_signal(|| None::<String>);
     let is_loading = use_signal(|| false);
-    let animated = use_animated(|style| style.opacity(1.0).duration(0.5));
 
     let on_submit = move |_| async move {
         if recipient.read().is_empty() || *amount.read() == 0 {
@@ -51,19 +50,18 @@ pub fn PaymentForm() -> Element {
     };
 
     let on_recipient_change = move |evt: Event<FormData>| {
-        recipient.set(evt.value.clone());
+        recipient.set(evt.value().clone());
     };
 
     let on_amount_change = move |evt: Event<FormData>| {
-        let value = evt.value.parse::<u64>().unwrap_or(0);
+        let value = evt.value().parse::<u64>().unwrap_or(0);
         amount.set(value);
     };
 
     rsx! {
         div {
             class: "payment-form",
-            style: "{global_styles()} .payment-form { display: flex; flex-direction: column; gap: 10px; padding: 20px; max-width: 400px; margin: auto; }",
-            style: "{animated}",
+            style: "{{{global_styles()}}} .payment-form {{ display: flex; flex-direction: column; gap: 10px; padding: 20px; max-width: 400px; margin: auto; }}",
             h2 { class: "title", "Send Payment" }
             input {
                 r#type: "text",
