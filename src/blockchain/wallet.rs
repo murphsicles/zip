@@ -1,8 +1,8 @@
 use bincode;
 use parking_lot::RwLock;
 use reqwest::Client;
-use rust_decimal::prelude::FromPrimitive;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::FromPrimitive;
 use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
