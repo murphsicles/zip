@@ -32,7 +32,9 @@ impl AuthUtils {
             if let Some(secret) = data.email.as_bytes().get(0..20) {
                 let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret.to_vec())
                     .map_err(|e| ZipError::Auth(e.to_string()))?;
-                let result = totp.check_current(code).map_err(|e| ZipError::Auth(e.to_string()))?;
+                let result = totp
+                    .check_current(code)
+                    .map_err(|e| ZipError::Auth(e.to_string()))?;
                 let _ = self
                     .telemetry
                     .track_auth_event(&user_id.to_string(), "totp_validation", result)
@@ -47,10 +49,22 @@ impl AuthUtils {
     }
 
     /// Generates a new TOTP secret and QR code for 2FA setup.
-    pub async fn generate_totp(&self, user_id: Uuid, email: &str) -> Result<(String, String), ZipError> {
+    pub async fn generate_totp(
+        &self,
+        user_id: Uuid,
+        email: &str,
+    ) -> Result<(String, String), ZipError> {
         let secret = Secret::Raw(generate_salt(20));
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().map_err(|e| ZipError::Auth(e.to_string()))?)
-            .map_err(|e| ZipError::Auth(e.to_string()))?;
+        let totp = TOTP::new(
+            Algorithm::SHA1,
+            6,
+            1,
+            30,
+            secret
+                .to_bytes()
+                .map_err(|e| ZipError::Auth(e.to_string()))?,
+        )
+        .map_err(|e| ZipError::Auth(e.to_string()))?;
         let qr_code = totp.get_url();
         let secret_base32 = totp.get_secret_base32();
         let _ = self
