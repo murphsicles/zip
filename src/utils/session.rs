@@ -37,9 +37,13 @@ impl Session {
             is_authenticated: true,
             created_at: chrono::Utc::now(),
         };
-        let serialized = bincode::serialize(&session).map_err(|e| ZipError::Storage(e.to_string()))?;
+        let serialized =
+            bincode::serialize(&session).map_err(|e| ZipError::Storage(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
-        let _ = self.telemetry.track_auth_event(&user_id.to_string(), "session_create", true).await;
+        let _ = self
+            .telemetry
+            .track_auth_event(&user_id.to_string(), "session_create", true)
+            .await;
         Ok(())
     }
 
@@ -52,7 +56,10 @@ impl Session {
     /// Clears session for a user.
     pub async fn clear(&self, user_id: Uuid) -> Result<(), ZipError> {
         self.storage.store_user_data(user_id, &[])?;
-        let _ = self.telemetry.track_auth_event(&user_id.to_string(), "session_clear", true).await;
+        let _ = self
+            .telemetry
+            .track_auth_event(&user_id.to_string(), "session_clear", true)
+            .await;
         Ok(())
     }
 
