@@ -1,5 +1,5 @@
-use rand::rngs::OsRng;
 use rand::RngCore;
+use rand::rngs::OsRng;
 use regex::Regex;
 
 use crate::errors::ZipError;
@@ -23,7 +23,9 @@ impl Security {
             .filter(|c| !['<', '>', '&', '"', '\'', '/'].contains(c))
             .collect::<String>();
         if sanitized.is_empty() {
-            Err(ZipError::Validation("Input is empty after sanitization".to_string()))
+            Err(ZipError::Validation(
+                "Input is empty after sanitization".to_string(),
+            ))
         } else {
             Ok(sanitized)
         }
