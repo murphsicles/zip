@@ -1,8 +1,8 @@
 use bincode;
 use itertools::Itertools;
 use parking_lot::RwLock;
-use rand::rngs::OsRng;
 use rand::RngCore;
+use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use sv::private_key::PrivateKey;
