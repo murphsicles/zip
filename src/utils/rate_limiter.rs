@@ -27,9 +27,7 @@ impl RateLimiter {
         let mut limits = self.limits.lock().await;
         let now = Instant::now();
 
-        let (count, timestamp) = limits
-            .entry(key.to_string())
-            .or_insert((0, now));
+        let (count, timestamp) = limits.entry(key.to_string()).or_insert((0, now));
 
         if now.duration_since(*timestamp) > self.window {
             *count = 0;
