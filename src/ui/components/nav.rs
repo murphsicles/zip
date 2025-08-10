@@ -12,9 +12,12 @@ pub fn NavBar() -> Element {
     let user_id = use_signal(|| Uuid::new_v4());
     let is_authenticated = use_signal(|| false);
 
-    use_effect(to_owned![session, user_id, is_authenticated], || async move {
-        is_authenticated.set(session.is_authenticated(*user_id.read()).await);
-    });
+    use_effect(
+        to_owned![session, user_id, is_authenticated],
+        || async move {
+            is_authenticated.set(session.is_authenticated(*user_id.read()).await);
+        },
+    );
 
     rsx! {
         nav {
