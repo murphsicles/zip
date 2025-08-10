@@ -19,8 +19,8 @@ pub struct PasskeyManager {
 impl PasskeyManager {
     /// Initializes Passkey manager with relying party details.
     pub fn new(storage: Arc<ZipStorage>) -> Result<Self, ZipError> {
-        let webauthn = WebauthnBuilder::new("zip-app", &Url::parse("https://zip-app.com")?)?
-            .build()?;
+        let webauthn =
+            WebauthnBuilder::new("zip-app", &Url::parse("https://zip-app.com")?)?.build()?;
         Ok(Self {
             webauthn: Arc::new(webauthn),
             storage,
@@ -49,8 +49,8 @@ impl PasskeyManager {
             .webauthn
             .finish_passkey_registration(&cred, &state)
             .map_err(|e| ZipError::Passkey(e))?;
-        let serialized = bincode::serialize(&passkey)
-            .map_err(|e| ZipError::Passkey(WebauthnError::Unknown))?;
+        let serialized =
+            bincode::serialize(&passkey).map_err(|e| ZipError::Passkey(WebauthnError::Unknown))?;
         self.storage.store_user_data(user_id, &serialized)?;
         Ok(passkey)
     }
@@ -81,8 +81,8 @@ impl PasskeyManager {
             .storage
             .get_user_data(user_id)?
             .ok_or(ZipError::Passkey(WebauthnError::CredentialRetrievalError))?;
-        let passkeys: Vec<Passkey> = bincode::deserialize(&cached)
-            .map_err(|_| ZipError::Passkey(WebauthnError::Unknown))?;
+        let passkeys: Vec<Passkey> =
+            bincode::deserialize(&cached).map_err(|_| ZipError::Passkey(WebauthnError::Unknown))?;
         self.webauthn
             .start_passkey_authentication(&passkeys)
             .map_err(|e| ZipError::Passkey(e))
