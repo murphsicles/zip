@@ -1,13 +1,13 @@
 use bincode;
 use paymail_rs::{PaymailClient, PaymentRequest};
-use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
 use serde_json::Value;
 use std::collections::HashSet;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use sv::private_key::PrivateKey;
 use sv::script::Script;
+use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use crate::config::EnvConfig;
@@ -126,7 +126,8 @@ impl PaymailManager {
 
         // Handle bespoke alias (free if first, 5+ digits)
         if let Some(prefix) = bespoke_prefix {
-            if prefix.is_empty() || prefix.contains('@') || prefix.contains('.') || prefix.len() < 5 {
+            if prefix.is_empty() || prefix.contains('@') || prefix.contains('.') || prefix.len() < 5
+            {
                 return Err(ZipError::Blockchain("Invalid bespoke prefix".to_string()));
             }
             let price = if is_first && prefix == "101" {
