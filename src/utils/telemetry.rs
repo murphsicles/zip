@@ -27,7 +27,12 @@ impl Telemetry {
     }
 
     /// Tracks an authentication event (e.g., login success/failure) and sends to endpoint if configured.
-    pub async fn track_auth_event(&self, user_id: &str, event: &str, success: bool) -> Result<(), ZipError> {
+    pub async fn track_auth_event(
+        &self,
+        user_id: &str,
+        event: &str,
+        success: bool,
+    ) -> Result<(), ZipError> {
         if !self.enabled {
             return Ok(());
         }
