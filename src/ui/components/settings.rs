@@ -1,7 +1,7 @@
 use bincode;
 use dioxus::prelude::*;
-use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
@@ -40,52 +40,66 @@ pub fn Settings() -> Element {
     let error = use_signal(|| None::<ZipError>);
     let notification = use_signal(|| None::<String>);
 
-    use_effect(to_owned![storage, paymail, user_id, selected_currency, selected_theme, paymail_aliases, primary_paymail, notification, error], || async move {
-        // Load preferences
-        if let Some(data) = storage.get_user_data(*user_id.read()).unwrap_or_default() {
-            let prefs: HashMap<String, String> = bincode::deserialize(&data).unwrap_or_default();
-            let currency = prefs.get("currency").cloned().unwrap_or("USD".to_string());
-            if Validation::validate_currency(&currency).is_ok() {
-                selected_currency.set(currency);
-            }
-            selected_theme.set(
-                prefs
-                    .get("theme")
-                    .map(|t| {
-                        if t == "dark" {
-                            Theme::Dark
-                        } else {
-                            Theme::Light
-                        }
-                    })
-                    .unwrap_or(Theme::Light),
-            );
-            two_fa_enabled.set(prefs.get("2fa_enabled").is_some());
-        }
-        // Load PayMail aliases
-        match paymail.get_user_aliases(*user_id.read()).await {
-            Ok(aliases) => {
-                paymail_aliases.set(aliases);
-                if let Some(primary) = paymail_aliases.read().iter().next() {
-                    primary_paymail.set(primary.clone());
+    use_effect(
+        to_owned![
+            storage,
+            paymail,
+            user_id,
+            selected_currency,
+            selected_theme,
+            paymail_aliases,
+            primary_paymail,
+            notification,
+            error
+        ],
+        || async move {
+            // Load preferences
+            if let Some(data) = storage.get_user_data(*user_id.read()).unwrap_or_default() {
+                let prefs: HashMap<String, String> =
+                    bincode::deserialize(&data).unwrap_or_default();
+                let currency = prefs.get("currency").cloned().unwrap_or("USD".to_string());
+                if Validation::validate_currency(&currency).is_ok() {
+                    selected_currency.set(currency);
                 }
+                selected_theme.set(
+                    prefs
+                        .get("theme")
+                        .map(|t| {
+                            if t == "dark" {
+                                Theme::Dark
+                            } else {
+                                Theme::Light
+                            }
+                        })
+                        .unwrap_or(Theme::Light),
+                );
+                two_fa_enabled.set(prefs.get("2fa_enabled").is_some());
             }
-            Err(e) => error.set(Some(e)),
-        }
-        // Assign default PayMail if none exists
-        if paymail_aliases.read().is_empty() {
-            match paymail.create_default_alias(*user_id.read(), None).await {
-                Ok((alias, _)) => {
-                    let mut aliases = paymail_aliases.read().clone();
-                    aliases.insert(alias.clone());
+            // Load PayMail aliases
+            match paymail.get_user_aliases(*user_id.read()).await {
+                Ok(aliases) => {
                     paymail_aliases.set(aliases);
-                    primary_paymail.set("101@zip.io".to_string());
-                    notification.set(Some(format!("Default PayMail assigned: {}", alias)));
+                    if let Some(primary) = paymail_aliases.read().iter().next() {
+                        primary_paymail.set(primary.clone());
+                    }
                 }
                 Err(e) => error.set(Some(e)),
             }
-        }
-    });
+            // Assign default PayMail if none exists
+            if paymail_aliases.read().is_empty() {
+                match paymail.create_default_alias(*user_id.read(), None).await {
+                    Ok((alias, _)) => {
+                        let mut aliases = paymail_aliases.read().clone();
+                        aliases.insert(alias.clone());
+                        paymail_aliases.set(aliases);
+                        primary_paymail.set("101@zip.io".to_string());
+                        notification.set(Some(format!("Default PayMail assigned: {}", alias)));
+                    }
+                    Err(e) => error.set(Some(e)),
+                }
+            }
+        },
+    );
 
     let on_currency_change = move |evt: Event<FormData>| {
         let new_currency = evt.value().clone();
@@ -181,8 +195,8 @@ pub fn Settings() -> Element {
                 .fetch_price(&selected_currency.read())
                 .await
                 .unwrap_or(Decimal::ONE))
-            .to_u64()
-            .unwrap_or(0);
+        .to_u64()
+        .unwrap_or(0);
         match Validation::validate_amount(satoshis) {
             Ok(()) => {}
             Err(e) => {
@@ -349,4 +363,4 @@ pub fn Settings() -> Element {
             }
         }
     }
-                }
+}
