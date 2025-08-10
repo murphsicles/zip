@@ -28,46 +28,66 @@ pub fn Profile() -> Element {
     let is_loading = use_signal(|| true);
     let animated = use_animated(|style| style.opacity(1.0).duration(0.5));
 
-    use_effect(to_owned![auth, wallet, paymail, session, user_id, email, primary_paymail, balance, balance_converted, currency, error, notification, is_loading], || async move {
-        // Check authentication
-        if !session.is_authenticated(*user_id.read()).await {
-            router().push(Route::Auth);
-            return;
-        }
-
-        // Load session data
-        match session.get(*user_id.read()).await {
-            Ok(Some(session_data)) => {
-                email.set(session_data.email);
+    use_effect(
+        to_owned![
+            auth,
+            wallet,
+            paymail,
+            session,
+            user_id,
+            email,
+            primary_paymail,
+            balance,
+            balance_converted,
+            currency,
+            error,
+            notification,
+            is_loading
+        ],
+        || async move {
+            // Check authentication
+            if !session.is_authenticated(*user_id.read()).await {
+                router().push(Route::Auth);
+                return;
             }
-            Ok(None) => error.set(Some(ZipError::Auth("No session found".to_string()))),
-            Err(e) => error.set(Some(e)),
-        }
 
-        // Load balance
-        match wallet.update_balance(*user_id.read(), &currency.read()).await {
-            Ok((bsv, usd)) => {
-                balance.set(bsv);
-                balance_converted.set(usd);
-            }
-            Err(e) => error.set(Some(e)),
-        }
-
-        // Load primary PayMail
-        match paymail.get_user_aliases(*user_id.read()).await {
-            Ok(aliases) => {
-                if let Some(primary) = aliases.iter().next() {
-                    primary_paymail.set(primary.clone());
-                } else {
-                    primary_paymail.set("None".to_string());
+            // Load session data
+            match session.get(*user_id.read()).await {
+                Ok(Some(session_data)) => {
+                    email.set(session_data.email);
                 }
+                Ok(None) => error.set(Some(ZipError::Auth("No session found".to_string()))),
+                Err(e) => error.set(Some(e)),
             }
-            Err(e) => error.set(Some(e)),
-        }
 
-        is_loading.set(false);
-        notification.set(Some("Profile loaded".to_string()));
-    });
+            // Load balance
+            match wallet
+                .update_balance(*user_id.read(), &currency.read())
+                .await
+            {
+                Ok((bsv, usd)) => {
+                    balance.set(bsv);
+                    balance_converted.set(usd);
+                }
+                Err(e) => error.set(Some(e)),
+            }
+
+            // Load primary PayMail
+            match paymail.get_user_aliases(*user_id.read()).await {
+                Ok(aliases) => {
+                    if let Some(primary) = aliases.iter().next() {
+                        primary_paymail.set(primary.clone());
+                    } else {
+                        primary_paymail.set("None".to_string());
+                    }
+                }
+                Err(e) => error.set(Some(e)),
+            }
+
+            is_loading.set(false);
+            notification.set(Some("Profile loaded".to_string()));
+        },
+    );
 
     rsx! {
         div {
