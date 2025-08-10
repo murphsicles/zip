@@ -42,14 +42,22 @@ pub fn Auth() -> Element {
             }
         };
         if Security::validate_email(&sanitized_email).is_err() {
-            error.set(Some(ZipError::Validation("Invalid email format".to_string())));
+            error.set(Some(ZipError::Validation(
+                "Invalid email format".to_string(),
+            )));
             is_loading.set(false);
             return;
         }
-        match auth.start_passkey_authentication(*user_id.read(), Some(&totp_code.read())).await {
+        match auth
+            .start_passkey_authentication(*user_id.read(), Some(&totp_code.read()))
+            .await
+        {
             Ok((challenge, state)) => {
                 let cred = PublicKeyCredential::default(); // Placeholder
-                match auth.complete_passkey_authentication(*user_id.read(), cred, state).await {
+                match auth
+                    .complete_passkey_authentication(*user_id.read(), cred, state)
+                    .await
+                {
                     Ok(_) => {
                         notification.set(Some("Login successful".to_string()));
                         router().push(Route::DashboardRoute);
