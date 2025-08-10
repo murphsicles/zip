@@ -1,8 +1,8 @@
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::http_client;
 use oauth2::{AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope};
-use openidconnect::core::{CoreAdditionalClaims, CoreGenderClaim};
 use openidconnect::IdTokenClaims;
+use openidconnect::core::{CoreAdditionalClaims, CoreGenderClaim};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -23,16 +23,23 @@ impl OAuthManager {
         let client = BasicClient::new(
             config.oauth_client_id.into(),
             Some(config.oauth_client_secret.into()),
-            config.oauth_auth_url.parse().map_err(|_| {
-                ZipError::OAuth("Invalid auth URL".to_string().into())
-            })?,
-            Some(config.oauth_token_url.parse().map_err(|_| {
-                ZipError::OAuth("Invalid token URL".to_string().into())
-            })?),
+            config
+                .oauth_auth_url
+                .parse()
+                .map_err(|_| ZipError::OAuth("Invalid auth URL".to_string().into()))?,
+            Some(
+                config
+                    .oauth_token_url
+                    .parse()
+                    .map_err(|_| ZipError::OAuth("Invalid token URL".to_string().into()))?,
+            ),
         )
-        .set_redirect_uri(config.oauth_redirect_uri.parse().map_err(|_| {
-            ZipError::OAuth("Invalid redirect URI".to_string().into())
-        })?);
+        .set_redirect_uri(
+            config
+                .oauth_redirect_uri
+                .parse()
+                .map_err(|_| ZipError::OAuth("Invalid redirect URI".to_string().into()))?,
+        );
         Ok(Self {
             client: Arc::new(client),
             storage,
