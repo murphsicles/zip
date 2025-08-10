@@ -1,5 +1,5 @@
-use rand::rngs::OsRng;
 use rand::RngCore;
+use rand::rngs::OsRng;
 use rust_sv::private_key::PrivateKey;
 use rust_sv::public_key::PublicKey;
 use rust_sv::util::hash160;
@@ -24,18 +24,30 @@ impl Crypto {
     /// Generates a BSV address from a public key.
     pub fn generate_address(public_key: &PublicKey) -> String {
         let pubkey_hash = hash160(public_key.to_bytes());
-        addr_encode(&pubkey_hash, AddressType::P2PKH, rust_sv::network::Network::Mainnet)
+        addr_encode(
+            &pubkey_hash,
+            AddressType::P2PKH,
+            rust_sv::network::Network::Mainnet,
+        )
     }
 
     /// Signs a message with a private key.
     pub fn sign_message(private_key: &PrivateKey, message: &[u8]) -> Result<Vec<u8>, ZipError> {
-        let signature = private_key.sign(message).map_err(|e| ZipError::Crypto(e.to_string()))?;
+        let signature = private_key
+            .sign(message)
+            .map_err(|e| ZipError::Crypto(e.to_string()))?;
         Ok(signature)
     }
 
     /// Verifies a signature with a public key.
-    pub fn verify_signature(public_key: &PublicKey, message: &[u8], signature: &[u8]) -> Result<bool, ZipError> {
-        let result = public_key.verify(message, signature).map_err(|e| ZipError::Crypto(e.to_string()))?;
+    pub fn verify_signature(
+        public_key: &PublicKey,
+        message: &[u8],
+        signature: &[u8],
+    ) -> Result<bool, ZipError> {
+        let result = public_key
+            .verify(message, signature)
+            .map_err(|e| ZipError::Crypto(e.to_string()))?;
         Ok(result)
     }
 }
