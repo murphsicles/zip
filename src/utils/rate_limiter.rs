@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{Duration, Instant};
-
 use crate::errors::ZipError;
 
 /// Rate limiter for controlling request frequency.
+#[derive(Clone)]
 pub struct RateLimiter {
     limits: Arc<Mutex<HashMap<String, (u32, Instant)>>>,
     max_requests: u32,
@@ -26,21 +26,17 @@ impl RateLimiter {
     pub async fn check(&self, key: &str) -> Result<(), ZipError> {
         let mut limits = self.limits.lock().await;
         let now = Instant::now();
-
         let (count, timestamp) = limits.entry(key.to_string()).or_insert((0, now));
-
         if now.duration_since(*timestamp) > self.window {
             *count = 0;
             *timestamp = now;
         }
-
         if *count >= self.max_requests {
             return Err(ZipError::RateLimit(format!(
                 "Rate limit exceeded for {}. Try again later.",
                 key
             )));
         }
-
         *count += 1;
         Ok(())
     }
