@@ -1,9 +1,8 @@
 use dioxus::prelude::*;
-use dioxus_motion::use_animated;
-
+use dioxus_motion::use_animate; // Corrected from use_animated based on typical API
 use crate::errors::ZipError;
 
-#[derive(Props, PartialEq)]
+#[derive(Props, PartialEq, Clone)]
 pub struct ErrorProps {
     #[props(default)]
     error: Option<ZipError>,
@@ -11,8 +10,7 @@ pub struct ErrorProps {
 
 #[component]
 pub fn ErrorDisplay(props: ErrorProps) -> Element {
-    let animated = use_animated(|style| style.opacity(1.0).duration(0.5));
-
+    let animated = use_animate(|style| style.opacity(1.0).duration(0.5));
     rsx! {
         if let Some(error) = &props.error {
             div {
