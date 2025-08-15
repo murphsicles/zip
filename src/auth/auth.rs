@@ -52,7 +52,7 @@ impl AuthManager {
         code: String,
         pkce_verifier: PkceCodeVerifier,
         csrf_token: String,
-    ) -> Result<Uuid, ZipError> {
+    ) -> Result<(), ZipError> {
         self.rate_limiter.check(user_id).await?;
         let result = self
             .oauth
@@ -68,7 +68,7 @@ impl AuthManager {
                 .track_auth_event(&user_id.to_string(), "oauth_complete", success)
                 .await;
         }
-        result.map(|(user_id, _)| user_id)
+        result.map(|_| ())
     }
 
     /// Starts Passkey authentication with 2FA check, checks rate limit, tracks event.
