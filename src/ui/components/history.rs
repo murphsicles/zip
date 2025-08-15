@@ -9,7 +9,7 @@ use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
 use crate::blockchain::WalletManager;
-use crate::integrations::RustBusIntegrator;
+use crate::integrations::rustbus::RustBusIntegrator;
 use crate::ui::styles::global_styles;
 use crate::ui::transitions::fade_in;
 
@@ -25,7 +25,7 @@ struct Tx {
 }
 
 #[component]
-pub fn History() -> Element {
+pub fn History(cx: Scope) -> Element {
     let wallet = use_context::<WalletManager>();
     let rustbus = use_context::<RustBusIntegrator>();
     let user_id = use_signal(|| Uuid::new_v4());
@@ -36,59 +36,52 @@ pub fn History() -> Element {
     let current_price = use_signal(|| Decimal::ZERO);
     let historical_prices = use_signal(|| HashMap::new());
 
-    use_effect(to_owned![wallet, currency, current_price], || async move {
-        let client = Client::new();
-        let resp = client
-            .get(format!(
-                "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin-sv&vs_currencies={}",
-                currency.read().to_lowercase()
-            ))
-            .send()
-            .await;
-        let price = match resp {
-            Ok(resp) => match resp.json::<Value>().await {
-                Ok(json) => json["bitcoin-sv"][currency.read().to_lowercase()]
-                    .as_f64()
-                    .map(|p| Decimal::try_from_f64(p).unwrap_or_default())
-                    .unwrap_or_default(),
+    use_effect(move || {
+        async move {
+            let client = Client::new();
+            let resp = client
+                .get(format!(
+                    "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin-sv&vs_currencies={}",
+                    currency.read().to_lowercase()
+                ))
+                .send()
+                .await;
+            let price = match resp {
+                Ok(resp) => match resp.json::<Value>().await {
+                    Ok(json) => json["bitcoin-sv"][currency.read().to_lowercase()]
+                        .as_f64()
+                        .map(|p| Decimal::try_from_f64(p).unwrap_or_default())
+                        .unwrap_or_default(),
+                    Err(_) => Decimal::ZERO,
+                },
                 Err(_) => Decimal::ZERO,
-            },
-            Err(_) => Decimal::ZERO,
-        };
-        current_price.set(price);
+            };
+            current_price.set(price);
+        }
     });
 
-    use_effect(
-        to_owned![
-            rustbus,
-            user_id,
-            txs,
-            page,
-            loading,
-            currency,
-            historical_prices,
-            current_price
-        ],
-        || async move {
+    use_effect(move || {
+        async move {
             if *loading.read() {
                 return;
             }
             loading.set(true);
-            let new_txs = rustbus
-                .query_tx_history(*user_id.read())
-                .await
-                .unwrap_or_default();
+            let new_txs = match rustbus.query_tx_history(*user_id.read()).await {
+                Ok(txs) => txs,
+                Err(_) => vec![],
+            };
             let mut updated_txs = txs.read().clone();
-
             for txid in new_txs.into_iter().skip(*page.read() * 20).take(20) {
-                let tx_details = fetch_tx_details(&txid).await.unwrap_or_default();
+                let tx_details = match fetch_tx_details(&txid).await {
+                    Ok(details) => details,
+                    Err(_) => Value::default(),
+                };
                 let timestamp = tx_details["time"].as_str().unwrap_or("");
                 let dt = OffsetDateTime::parse(timestamp, &Rfc3339)
                     .unwrap_or_else(|_| OffsetDateTime::now_utc());
                 let date_str = dt
                     .format(&time::format_description::parse("[year]-[month]-[day]").unwrap())
                     .unwrap_or_default();
-
                 let hist_price = if let Some(price) = historical_prices.read().get(&date_str) {
                     *price
                 } else {
@@ -104,9 +97,9 @@ pub fn History() -> Element {
                         Ok(resp) => match resp.json::<Value>().await {
                             Ok(json) => json["market_data"]["current_price"]
                                 [currency.read().to_lowercase()]
-                            .as_f64()
-                            .map(|p| Decimal::try_from_f64(p).unwrap_or_default())
-                            .unwrap_or_default(),
+                                .as_f64()
+                                .map(|p| Decimal::try_from_f64(p).unwrap_or_default())
+                                .unwrap_or_default(),
                             Err(_) => Decimal::ZERO,
                         },
                         Err(_) => Decimal::ZERO,
@@ -114,7 +107,6 @@ pub fn History() -> Element {
                     historical_prices.write().insert(date_str.clone(), price);
                     price
                 };
-
                 let tx_amount = tx_details["amount"].as_u64().unwrap_or(0) as f64 / 100_000_000.0;
                 let amount_usd = Decimal::try_from_f64(tx_amount).unwrap_or_default() * hist_price;
                 let current_value_usd =
@@ -124,7 +116,6 @@ pub fn History() -> Element {
                 } else {
                     Decimal::ZERO
                 };
-
                 updated_txs.push(Tx {
                     token: "BSV".to_string(), // Placeholder for token support
                     amount_usd,
@@ -133,10 +124,7 @@ pub fn History() -> Element {
                     txid,
                     timestamp: dt
                         .format(
-                            &time::format_description::parse(
-                                "[year]/[month]/[day]:[hour]:[minute]",
-                            )
-                            .unwrap(),
+                            &time::format_description::parse("[year]/[month]/[day]:[hour]:[minute]").unwrap(),
                         )
                         .unwrap_or_default(),
                     from_to: tx_details["from"].as_str().unwrap_or("Unknown").to_string(),
@@ -145,8 +133,8 @@ pub fn History() -> Element {
             txs.set(updated_txs);
             page.set(*page.read() + 1);
             loading.set(false);
-        },
-    );
+        }
+    });
 
     fade_in(
         cx,
@@ -179,10 +167,7 @@ pub fn History() -> Element {
 async fn fetch_tx_details(txid: &str) -> Result<Value, reqwest::Error> {
     let client = Client::new();
     client
-        .get(format!(
-            "https://api.whatsonchain.com/v1/bsv/main/tx/{}",
-            txid
-        ))
+        .get(format!("https://api.whatsonchain.com/v1/bsv/main/tx/{}", txid))
         .send()
         .await?
         .json::<Value>()
