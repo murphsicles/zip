@@ -9,16 +9,15 @@ use crate::ui::styles::global_styles;
 use crate::ui::transitions::fade_in;
 
 #[component]
-pub fn Dashboard() -> Element {
+pub fn Dashboard(cx: Scope) -> Element {
     let wallet = use_context::<WalletManager>();
     let user_id = use_signal(|| Uuid::new_v4());
     let balance = use_signal(|| 0u64);
     let balance_converted = use_signal(|| Decimal::ZERO);
     let currency = use_signal(|| "USD".to_string());
 
-    use_effect(
-        to_owned![wallet, user_id, balance, balance_converted, currency],
-        || async move {
+    use_effect(move || {
+        async move {
             match wallet
                 .update_balance(*user_id.read(), &currency.read())
                 .await
@@ -32,8 +31,8 @@ pub fn Dashboard() -> Element {
                     balance_converted.set(Decimal::ZERO);
                 }
             }
-        },
-    );
+        }
+    });
 
     fade_in(
         cx,
