@@ -8,17 +8,16 @@ use crate::ui::styles::global_styles;
 use crate::ui::transitions::slide_right;
 
 #[component]
-pub fn Home() -> Element {
+pub fn Home(cx: Scope) -> Element {
     let session = use_context::<Session>();
     let is_authenticated = use_signal(|| false);
     let user_id = use_signal(|| Uuid::new_v4());
 
-    use_effect(
-        to_owned![session, user_id, is_authenticated],
-        || async move {
+    use_effect(move || {
+        async move {
             is_authenticated.set(session.is_authenticated(*user_id.read()).await);
-        },
-    );
+        }
+    });
 
     slide_right(
         cx,
@@ -32,8 +31,10 @@ pub fn Home() -> Element {
                 Link { to: Route::HistoryRoute, class: "nav-link", "View History" }
                 Link { to: Route::SettingsRoute, class: "nav-link", "Settings" }
                 if *is_authenticated.read() {
-                    Link { to: Route::DashboardRoute, class: "nav-link", "Wallet" }
-                    Link { to: Route::LogoutRoute, class: "nav-link", "Logout" }
+                    rsx! {
+                        Link { to: Route::DashboardRoute, class: "nav-link", "Wallet" }
+                        Link { to: Route::LogoutRoute, class: "nav-link", "Logout" }
+                    }
                 }
             }
         },
