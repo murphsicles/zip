@@ -1,9 +1,8 @@
 use dioxus::prelude::*;
 use dioxus_motion::use_animated;
-
 use crate::ui::styles::global_styles;
 
-#[derive(Props, PartialEq)]
+#[derive(Props, PartialEq, Clone)]
 pub struct LoadingProps {
     #[props(default = "Loading...".to_string())]
     message: String,
@@ -12,7 +11,6 @@ pub struct LoadingProps {
 #[component]
 pub fn Loading(props: LoadingProps) -> Element {
     let animated = use_animated(|style| style.opacity(1.0).duration(0.3));
-
     rsx! {
         div {
             class: "loading",
