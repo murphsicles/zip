@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::config::EnvConfig;
@@ -6,7 +7,7 @@ use crate::errors::ZipError;
 use crate::storage::ZipStorage;
 use crate::utils::telemetry::Telemetry;
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct SessionData {
     pub user_id: Uuid,
     pub email: String,
@@ -14,6 +15,7 @@ pub struct SessionData {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[derive(Clone)]
 pub struct Session {
     storage: Arc<ZipStorage>,
     telemetry: Telemetry,
@@ -37,8 +39,7 @@ impl Session {
             is_authenticated: true,
             created_at: chrono::Utc::now(),
         };
-        let serialized =
-            bincode::serialize(&session).map_err(|e| ZipError::Storage(e.to_string()))?;
+        let serialized = bincode::serialize(&session).map_err(|e| ZipError::Storage(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
         let _ = self
             .telemetry
