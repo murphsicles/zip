@@ -1,9 +1,9 @@
+use crate::errors::ZipError;
 use rand::RngCore;
 use rand::rngs::OsRng;
 use secp256k1::{Secp256k1, SecretKey}; // Replaced sv::keypair::PrivateKey
 use sv::public_key::PublicKey;
 use sv::util::hash160;
-use crate::errors::ZipError;
 
 pub struct Crypto;
 
@@ -13,8 +13,7 @@ impl Crypto {
         let secp = Secp256k1::new();
         let mut bytes = [0u8; 32];
         OsRng.fill_bytes(&mut bytes); // Ensure rand 0.9.3 or later for OsRng
-        SecretKey::from_slice(&bytes)
-            .map_err(|e| ZipError::Crypto(e.to_string()))
+        SecretKey::from_slice(&bytes).map_err(|e| ZipError::Crypto(e.to_string()))
     }
 
     /// Derives a public key from a private key.
@@ -36,7 +35,10 @@ impl Crypto {
     pub fn sign_message(private_key: &SecretKey, message: &[u8]) -> Result<Vec<u8>, ZipError> {
         let secp = Secp256k1::new();
         let message_hash = sv::util::sha256d(message).0; // Assuming sha256d returns Hash256
-        let sig = secp.sign_ecdsa(&secp256k1::Message::from_slice(&message_hash).unwrap(), private_key);
+        let sig = secp.sign_ecdsa(
+            &secp256k1::Message::from_slice(&message_hash).unwrap(),
+            private_key,
+        );
         Ok(sig.serialize_compact().to_vec())
     }
 
@@ -52,6 +54,12 @@ impl Crypto {
             .map_err(|e| ZipError::Crypto(e.to_string()))?;
         let pubkey = secp256k1::PublicKey::from_slice(public_key.to_bytes())
             .map_err(|e| ZipError::Crypto(e.to_string()))?;
-        Ok(secp.verify_ecdsa(&secp256k1::Message::from_slice(&message_hash).unwrap(), &sig, &pubkey).is_ok())
+        Ok(secp
+            .verify_ecdsa(
+                &secp256k1::Message::from_slice(&message_hash).unwrap(),
+                &sig,
+                &pubkey,
+            )
+            .is_ok())
     }
 }
