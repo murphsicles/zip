@@ -3,13 +3,13 @@ use itertools::Itertools;
 use parking_lot::RwLock;
 use rand::RngCore;
 use rand::rngs::OsRng;
+use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use sv::messages::{Tx, TxIn, TxOut}; // Confirmed via src/transaction/mod.rs example
 use sv::script::Script; // Confirmed via documentation
-use sv::transaction::{generate_signature, sighash, SigHashCache, SIGHASH_FORKID, SIGHASH_ALL};
+use sv::transaction::{SIGHASH_ALL, SIGHASH_FORKID, SigHashCache, generate_signature, sighash};
 use sv::util::hash160;
-use secp256k1::{Secp256k1, SecretKey, PublicKey};
 use uuid::Uuid;
 
 use crate::errors::ZipError;
@@ -99,8 +99,15 @@ impl TransactionManager {
             } else {
                 create_lock_script(&hash160(&[0u8; 20]))
             };
-            let sighash = sighash(&tx, i, &lock_script, 0, SIGHASH_FORKID | SIGHASH_ALL, &mut cache)
-                .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+            let sighash = sighash(
+                &tx,
+                i,
+                &lock_script,
+                0,
+                SIGHASH_FORKID | SIGHASH_ALL,
+                &mut cache,
+            )
+            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
             let signature = generate_signature(&priv_key[..], &sighash, SIGHASH_FORKID | SIGHASH_ALL)
                 .map_err(|e| ZipError::Blockchain(e.to_string()))?;
             let pubkey = PublicKey::from_secret_key(&secp, &priv_key).serialize();
@@ -159,8 +166,15 @@ impl TransactionManager {
             } else {
                 create_lock_script(&hash160(&[0u8; 20]))
             };
-            let sighash = sighash(&tx, i, &lock_script, 0, SIGHASH_FORKID | SIGHASH_ALL, &mut cache)
-                .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+            let sighash = sighash(
+                &tx,
+                i,
+                &lock_script,
+                0,
+                SIGHASH_FORKID | SIGHASH_ALL,
+                &mut cache,
+            )
+            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
             let signature = generate_signature(&priv_key[..], &sighash, SIGHASH_FORKID | SIGHASH_ALL)
                 .map_err(|e| ZipError::Blockchain(e.to_string()))?;
             let pubkey = PublicKey::from_secret_key(&secp, &priv_key).serialize();
@@ -172,8 +186,7 @@ impl TransactionManager {
     /// Fetches UTXOs from cache or RustBus.
     async fn fetch_utxos(&self, user_id: Uuid) -> Result<Vec<UTXO>, ZipError> {
         if let Some(cached) = self.storage.get_utxos(user_id)? {
-            bincode::deserialize(&cached)
-                .map_err(|e| ZipError::Blockchain(e.to_string()))
+            bincode::deserialize(&cached).map_err(|e| ZipError::Blockchain(e.to_string()))
         } else if let Some(r) = &self.rustbus {
             let address = "user_address"; // From wallet
             let balance = r.query_balance(&address).await?;
