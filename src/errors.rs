@@ -1,5 +1,6 @@
 use std::error::Error as StdError;
 use thiserror::Error;
+use webauthn_rs::error::WebauthnError;
 
 #[derive(Error, Debug, PartialEq)]
 #[non_exhaustive]
@@ -7,7 +8,7 @@ pub enum ZipError {
     #[error("Authentication failed: {0}")]
     Auth(String),
 
-    #[error("Blockchain operation failed: {0}")]
+    #[error("Blockchain error: {0}")]
     Blockchain(String),
 
     #[error("Configuration error: {0}")]
@@ -26,7 +27,7 @@ pub enum ZipError {
     OAuth(Box<dyn StdError + Send + Sync>),
 
     #[error("Passkey operation failed: {0}")]
-    Passkey(#[from] webauthn_rs::error::WebauthnError),
+    Passkey(#[from] WebauthnError),
 
     #[error("Rate limit exceeded: {0}")]
     RateLimit(String),
