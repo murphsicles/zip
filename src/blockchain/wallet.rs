@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use sv::wallet::ExtendedPrivateKey;
-use sv::transaction::Transaction; // Corrected from sv::messages::Transaction
+use sv::transaction::Transaction; // Correct import
+use sv::messages::Tx; // Added for manual serialization
 use sv::script::Script;
 use uuid::Uuid;
 use hex;
@@ -192,7 +193,22 @@ impl WalletManager {
         let tx_id = result
             .as_ref()
             .map(|tx| {
-                hex::encode(tx.to_bytes()) // Corrected to sv::transaction::Transaction
+                // Manual serialization since to_bytes is not available
+                let mut bytes = vec![];
+                bytes.extend_from_slice(&tx.version.to_le_bytes());
+                bytes.extend_from_slice(&(tx.inputs.len() as u32).to_le_bytes());
+                for input in &tx.inputs {
+                    bytes.extend_from_slice(&input.previous_output.to_bytes());
+                    bytes.extend_from_slice(&input.script.0);
+                    bytes.extend_from_slice(&input.sequence.to_le_bytes());
+                }
+                bytes.extend_from_slice(&(tx.outputs.len() as u32).to_le_bytes());
+                for output in &tx.outputs {
+                    bytes.extend_from_slice(&output.value.to_le_bytes());
+                    bytes.extend_from_slice(&output.script.0);
+                }
+                bytes.extend_from_slice(&tx.lock_time.to_le_bytes());
+                hex::encode(bytes)
             })
             .unwrap_or(Ok(String::new()))?;
         let _ = self
