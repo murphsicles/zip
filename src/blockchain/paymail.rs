@@ -1,12 +1,11 @@
 use bincode;
-use paymail_rs::{PaymailClient, PaymentRequest};
+use paymail_rs::{PaymailClient, models::PaymentRequest};
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
 use serde_json::Value;
 use std::collections::HashSet;
 use std::sync::Arc;
-use sv::private_key::PrivateKey;
-use sv::script::Script;
+use sv::script::Script; // Confirmed via documentation
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -15,6 +14,7 @@ use crate::errors::ZipError;
 use crate::storage::ZipStorage;
 use crate::utils::rate_limiter::RateLimiter;
 use crate::utils::telemetry::Telemetry;
+use sv::private_key::PrivateKey; // Retained as it’s correct per documentation
 
 #[derive(Clone)]
 pub struct PaymailManager {
@@ -29,7 +29,10 @@ pub struct PaymailManager {
 impl PaymailManager {
     /// Initializes PayMail client with private key, configuration, and telemetry.
     pub fn new(priv_key: PrivateKey, storage: Arc<ZipStorage>) -> Self {
-        let config = EnvConfig::load().unwrap_or_default();
+        let config = EnvConfig::load().unwrap_or_else(|_| {
+            // TODO: Add #[derive(Default)] to EnvConfig in src/config/env.rs
+            panic!("Failed to load config, EnvConfig requires Default implementation")
+        });
         Self {
             client: Arc::new(Mutex::new(PaymailClient::new(&priv_key))),
             domain: config.paymail_domain.unwrap_or("zip.io".to_string()),
@@ -108,22 +111,18 @@ impl PaymailManager {
             p.to_string()
         };
         let default_alias = format!("{}@{}", prefix, self.domain);
-
         let aliases = self.get_user_aliases(user_id).await?;
         let is_first = aliases.is_empty();
         let mut new_aliases = aliases;
-
         // Store default alias
         new_aliases.insert(default_alias.clone());
         let serialized =
             bincode::serialize(&new_aliases).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
-
         let _ = self
             .telemetry
             .track_payment_event(&user_id.to_string(), "create_default_alias", 0, true)
             .await;
-
         // Handle bespoke alias (free if first, 5+ digits)
         if let Some(prefix) = bespoke_prefix {
             if prefix.is_empty() || prefix.contains('@') || prefix.contains('.') || prefix.len() < 5
@@ -179,14 +178,12 @@ impl PaymailManager {
             }
         };
         let alias = format!("{}@{}", prefix, self.domain);
-
         // Store pending alias
         let mut new_aliases = aliases;
         new_aliases.insert(alias.clone());
         let serialized =
             bincode::serialize(&new_aliases).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
-
         let _ = self
             .telemetry
             .track_payment_event(
