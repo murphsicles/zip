@@ -8,7 +8,8 @@ use std::sync::Arc;
 use sv::script::Script;
 use tokio::sync::Mutex;
 use uuid::Uuid;
-use secp256k1::{Secp256k1, SecretKey}; // Replaced sv::private_key::PrivateKey
+use secp256k1::Secp256k1; // Removed SecretKey as not used in initialization
+use reqwest; // Added for HTTP client
 use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
@@ -27,15 +28,20 @@ pub struct PaymailManager {
 
 impl PaymailManager {
     /// Initializes PayMail client with private key, configuration, and telemetry.
-    pub fn new(priv_key: SecretKey, storage: Arc<ZipStorage>) -> Self {
-        let secp = Secp256k1::new();
+    pub fn new(storage: Arc<ZipStorage>) -> Self {
         let config = EnvConfig::load().unwrap_or_else(|_| {
             // TODO: Add #[derive(Default)] to EnvConfig in src/config/env.rs
             panic!("Failed to load config, EnvConfig requires Default implementation")
         });
+        let domain = config.paymail_domain.unwrap_or("zip.io".to_string());
+        let client = PaymailClient::new(
+            reqwest::Client::new(),
+            &domain,
+            sv::network::Network::Mainnet,
+        ).map_err(|e| panic!("Failed to initialize PaymailClient: {}", e))?; // Confirm with paymail_rs documentation
         Self {
-            client: Arc::new(Mutex::new(PaymailClient::new(&secp, priv_key.serialize()))), // Adjusted for secp256k1::SecretKey
-            domain: config.paymail_domain.unwrap_or("zip.io".to_string()),
+            client: Arc::new(Mutex::new(client)),
+            domain,
             storage,
             next_prefix: Arc::new(Mutex::new(101)),
             telemetry: Telemetry::new(&config),
