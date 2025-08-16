@@ -1,6 +1,6 @@
 use rand::RngCore;
 use rand::rngs::OsRng;
-use sv::private_key::PrivateKey;
+use sv::keypair::PrivateKey; // Corrected from sv::private_key
 use sv::public_key::PublicKey;
 use sv::util::hash160;
 use crate::errors::ZipError;
