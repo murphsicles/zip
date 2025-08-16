@@ -1,24 +1,20 @@
 use dioxus::prelude::*;
-use dioxus_router::*;
-use uuid::Uuid;
+use dioxus_router::Link;
 
 use crate::ui::router::Route;
-use crate::ui::styles::global_styles;
 use crate::utils::session::Session;
 
 #[component]
 pub fn NavBar(cx: Scope) -> Element {
-    let session = use_context::<Session>();
+    let session = use_context::<Session>().unwrap();
     let user_id = use_signal(|| Uuid::new_v4());
     let is_authenticated = use_signal(|| false);
 
-    use_effect(move || {
-        async move {
-            is_authenticated.set(session.is_authenticated(*user_id.read()).await);
-        }
+    use_effect(move || async move {
+        is_authenticated.set(session.is_authenticated(*user_id.read()).await);
     });
 
-    rsx! {
+    cx.render(rsx! {
         nav {
             class: "navbar",
             style: "{{{global_styles()}}}",
@@ -38,5 +34,5 @@ pub fn NavBar(cx: Scope) -> Element {
                 }
             }
         }
-    }
+    })
 }
