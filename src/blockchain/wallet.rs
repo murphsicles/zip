@@ -1,4 +1,5 @@
 use bincode;
+use hex;
 use parking_lot::RwLock;
 use reqwest::Client;
 use rust_decimal::Decimal;
@@ -6,12 +7,11 @@ use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use sv::wallet::ExtendedPrivateKey;
-use sv::transaction::Transaction; // Correct import
 use sv::messages::Tx; // Added for manual serialization
 use sv::script::Script;
+use sv::transaction::Transaction; // Correct import
+use sv::wallet::ExtendedPrivateKey;
 use uuid::Uuid;
-use hex;
 
 use crate::blockchain::TransactionManager;
 use crate::config::EnvConfig;
@@ -109,8 +109,8 @@ impl WalletManager {
             balance_converted: Decimal::ZERO,
             derivation_path: format!("m/44'/0'/0'/0/{}", index),
         };
-        let serialized =
-            bincode::serialize(&data).map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let serialized = bincode::serialize(&data)
+            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
         let user_id = Uuid::new_v4();
         self.storage.store_user_data(user_id, &serialized)?;
         let _ = self
@@ -139,7 +139,8 @@ impl WalletManager {
         let price = resp["bitcoin-sv"][currency.to_lowercase()]
             .as_f64()
             .ok_or(ZipError::Blockchain("Invalid price data".to_string()))?;
-        let price = Decimal::from_f64(price).ok_or_else(|| ZipError::Blockchain("Invalid price conversion".to_string()))?; // Fixed from try_from_f64
+        let price = Decimal::from_f64(price)
+            .ok_or_else(|| ZipError::Blockchain("Invalid price conversion".to_string()))?; // Fixed from try_from_f64
         self.price_cache.insert(cache_key, price).await;
         Ok(price)
     }
@@ -166,8 +167,8 @@ impl WalletManager {
             balance_converted,
             derivation_path: format!("m/44'/0'/0'/0/{}", *self.derivation_index.read()),
         };
-        let serialized =
-            bincode::serialize(&data).map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let serialized = bincode::serialize(&data)
+            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
         let _ = self
             .telemetry
