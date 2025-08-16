@@ -1,15 +1,16 @@
 use bincode;
 use paymail_rs::{PaymailClient, models::PaymentRequest};
+use reqwest; // Added for HTTP client
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
+use secp256k1::Secp256k1; // Removed SecretKey as not used in initialization
 use serde_json::Value;
 use std::collections::HashSet;
 use std::sync::Arc;
 use sv::script::Script;
 use tokio::sync::Mutex;
 use uuid::Uuid;
-use secp256k1::Secp256k1; // Removed SecretKey as not used in initialization
-use reqwest; // Added for HTTP client
+
 use crate::config::EnvConfig;
 use crate::errors::ZipError;
 use crate::storage::ZipStorage;
@@ -38,7 +39,8 @@ impl PaymailManager {
             reqwest::Client::new(),
             &domain,
             sv::network::Network::Mainnet,
-        ).map_err(|e| panic!("Failed to initialize PaymailClient: {}", e))?; // Confirm with paymail_rs documentation
+        )
+        .map_err(|e| panic!("Failed to initialize PaymailClient: {}", e))?;
         Self {
             client: Arc::new(Mutex::new(client)),
             domain,
@@ -123,8 +125,8 @@ impl PaymailManager {
         let mut new_aliases = aliases;
         // Store default alias
         new_aliases.insert(default_alias.clone());
-        let serialized =
-            bincode::serialize(&new_aliases).map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let serialized = bincode::serialize(&new_aliases)
+            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
         let _ = self
             .telemetry
@@ -132,7 +134,10 @@ impl PaymailManager {
             .await;
         // Handle bespoke alias (free if first, 5+ digits)
         if let Some(prefix) = bespoke_prefix {
-            if prefix.is_empty() || prefix.contains('@') || prefix.contains('.') || prefix.len() < 5
+            if prefix.is_empty()
+                || prefix.contains('@')
+                || prefix.contains('.')
+                || prefix.len() < 5
             {
                 return Err(ZipError::Blockchain("Invalid bespoke prefix".to_string()));
             }
@@ -188,8 +193,8 @@ impl PaymailManager {
         // Store pending alias
         let mut new_aliases = aliases;
         new_aliases.insert(alias.clone());
-        let serialized =
-            bincode::serialize(&new_aliases).map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let serialized = bincode::serialize(&new_aliases)
+            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
         let _ = self
             .telemetry
