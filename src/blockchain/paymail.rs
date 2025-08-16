@@ -5,7 +5,7 @@ use rust_decimal::prelude::ToPrimitive;
 use serde_json::Value;
 use std::collections::HashSet;
 use std::sync::Arc;
-use sv::script::Script; // Confirmed via documentation
+use sv::script::Script;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -14,7 +14,7 @@ use crate::errors::ZipError;
 use crate::storage::ZipStorage;
 use crate::utils::rate_limiter::RateLimiter;
 use crate::utils::telemetry::Telemetry;
-use sv::private_key::PrivateKey; // Retained as it’s correct per documentation
+use sv::private_key::PrivateKey;
 
 #[derive(Clone)]
 pub struct PaymailManager {
@@ -58,11 +58,12 @@ impl PaymailManager {
             .get_payment_destination(handle, req)
             .await
             .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let script = Script::from(output.script_pubkey.clone()); // Adjusted for PaymentDestination
         let _ = self
             .telemetry
             .track_payment_event("anonymous", "resolve_paymail", amount, true)
             .await;
-        Ok((output.script, output.amount.unwrap_or(amount)))
+        Ok((script, output.amount.unwrap_or(amount)))
     }
 
     /// Sends transaction P2P if supported, else returns placeholder for node broadcast.
