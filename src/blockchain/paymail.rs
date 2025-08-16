@@ -134,10 +134,7 @@ impl PaymailManager {
             .await;
         // Handle bespoke alias (free if first, 5+ digits)
         if let Some(prefix) = bespoke_prefix {
-            if prefix.is_empty()
-                || prefix.contains('@')
-                || prefix.contains('.')
-                || prefix.len() < 5
+            if prefix.is_empty() || prefix.contains('@') || prefix.contains('.') || prefix.len() < 5
             {
                 return Err(ZipError::Blockchain("Invalid bespoke prefix".to_string()));
             }
