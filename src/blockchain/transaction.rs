@@ -5,11 +5,11 @@ use rand::RngCore;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use sv::messages::{Transaction, TxIn, TxOut};
-use sv::private_key::PrivateKey;
+use sv::messages::{Tx, TxIn, TxOut}; // Renamed Transaction to Tx
 use sv::script::Script;
-use sv::transaction::p2pkh::create_lock_script;
+use sv::transaction::{generate_signature, sighash, SigHashCache, SIGHASH_FORKID, SIGHASH_ALL};
 use sv::util::hash160;
+use secp256k1::{Secp256k1, SecretKey};
 use uuid::Uuid;
 
 use crate::errors::ZipError;
@@ -57,14 +57,19 @@ impl TransactionManager {
             return Err(ZipError::Blockchain("Insufficient balance".to_string()));
         }
         let utxos = self.fetch_utxos(user_id).await?;
-        let mut tx = Transaction::new();
+        let mut tx = Tx {
+            version: 2, // Default version
+            inputs: Vec::new(),
+            outputs: Vec::new(),
+            lock_time: 0,
+        };
         let mut input_amount = 0u64;
         for utxo in utxos
             .iter()
             .take_while(|_| input_amount < (utxo_value * num_utxos as u64))
         {
             let input = TxIn::new(&utxo.txid, utxo.vout, utxo.script.clone(), 0xFFFFFFFF);
-            tx.add_input(input);
+            tx.inputs.push(input);
             input_amount += utxo.amount;
         }
         let mut outputs = Vec::with_capacity(num_utxos);
@@ -75,17 +80,32 @@ impl TransactionManager {
             let pubkey_hash = hash160(&salt);
             let script = create_lock_script(&pubkey_hash); // Use p2pkh from transaction module
             let out = TxOut::new(script, utxo_value);
-            tx.add_output(out.clone())?;
+            tx.outputs.push(out.clone()); // Direct field mutation
             outputs.push(out);
         }
         let change = input_amount - (utxo_value * num_utxos as u64);
         if change > 0 {
             let change_script = create_lock_script(&hash160(&[0u8; 20])); // Placeholder
-            tx.add_output(TxOut::new(change_script, change))?;
+            tx.outputs.push(TxOut::new(change_script, change)); // Direct field mutation
         }
+        let secp = Secp256k1::new();
         let priv_key_bytes = self.storage.get_private_key()?;
-        let priv_key = PrivateKey::from_bytes(priv_key_bytes.expose_secret().clone())?;
-        tx.sign(&priv_key)?;
+        let priv_key = SecretKey::from_slice(priv_key_bytes.expose_secret().as_ref())
+            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let mut cache = SigHashCache::new();
+        for i in 0..tx.inputs.len() {
+            let lock_script = if i < utxos.len() {
+                utxos[i].script.clone()
+            } else {
+                create_lock_script(&hash160(&[0u8; 20])) // Placeholder for missing UTXOs
+            };
+            let sighash = sighash(&tx, i, &lock_script, 0, SIGHASH_FORKID | SIGHASH_ALL, &mut cache)
+                .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+            let signature = generate_signature(&priv_key[..], &sighash, SIGHASH_FORKID | SIGHASH_ALL)
+                .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+            let public_key = secp256k1::PublicKey::from_secret_key(&secp, &priv_key).serialize();
+            tx.inputs[i].unlock_script = create_unlock_script(&signature, &public_key);
+        }
         let serialized =
             bincode::serialize(&outputs).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.cache_utxos(user_id, &serialized)?;
@@ -99,11 +119,18 @@ impl TransactionManager {
         recipient_script: Script,
         amount: u64,
         fee: u64,
-    ) -> Result<Transaction, ZipError> {
+    ) -> Result<Tx, ZipError> {
         let utxos = self.fetch_utxos(user_id).await?;
+        let secp = Secp256k1::new();
         let priv_key_bytes = self.storage.get_private_key()?;
-        let priv_key = PrivateKey::from_bytes(priv_key_bytes.expose_secret().clone())?;
-        let mut tx = Transaction::new();
+        let priv_key = SecretKey::from_slice(priv_key_bytes.expose_secret().as_ref())
+            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let mut tx = Tx {
+            version: 2, // Default version
+            inputs: Vec::new(),
+            outputs: Vec::new(),
+            lock_time: 0,
+        };
         let mut input_amount = 0u64;
         // Optimized coin selection (minimal UTXOs, prefer small for low fees)
         let sorted_utxos = utxos.iter().sorted_by_key(|u| u.amount).collect::<Vec<_>>();
@@ -112,16 +139,34 @@ impl TransactionManager {
             .take_while(|_| input_amount < amount + fee)
         {
             let input = TxIn::new(&utxo.txid, utxo.vout, utxo.script.clone(), 0xFFFFFFFF);
-            tx.add_input(input);
+            tx.inputs.push(input);
             input_amount += utxo.amount;
         }
-        tx.add_output(TxOut::new(recipient_script, amount))?;
+        tx.outputs.push(TxOut::new(recipient_script, amount)); // Direct field mutation
         let change = input_amount - amount - fee;
         if change > 0 {
-            let change_script = create_lock_script(&hash160(priv_key.public_key().to_bytes()));
-            tx.add_output(TxOut::new(change_script, change))?;
+            let change_script = create_lock_script(&hash160(
+                secp.generate_keypair(&mut OsRng)
+                    .1
+                    .serialize_uncompressed()
+                    .as_ref(),
+            ));
+            tx.outputs.push(TxOut::new(change_script, change)); // Direct field mutation
         }
-        tx.sign(&priv_key)?;
+        let mut cache = SigHashCache::new();
+        for i in 0..tx.inputs.len() {
+            let lock_script = if i < utxos.len() {
+                utxos[i].script.clone()
+            } else {
+                create_lock_script(&hash160(&[0u8; 20])) // Placeholder for missing UTXOs
+            };
+            let sighash = sighash(&tx, i, &lock_script, 0, SIGHASH_FORKID | SIGHASH_ALL, &mut cache)
+                .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+            let signature = generate_signature(&priv_key[..], &sighash, SIGHASH_FORKID | SIGHASH_ALL)
+                .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+            let public_key = secp256k1::PublicKey::from_secret_key(&secp, &priv_key).serialize();
+            tx.inputs[i].unlock_script = create_unlock_script(&signature, &public_key);
+        }
         Ok(tx)
     }
 
