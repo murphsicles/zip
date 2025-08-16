@@ -6,9 +6,11 @@ use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use sv::wallet::ExtendedPrivateKey; // Adjusted from sv::bip32
+use sv::wallet::ExtendedPrivateKey;
+use sv::transaction::Transaction; // Corrected from sv::messages::Transaction
 use sv::script::Script;
 use uuid::Uuid;
+use hex;
 
 use crate::blockchain::TransactionManager;
 use crate::config::EnvConfig;
@@ -190,8 +192,7 @@ impl WalletManager {
         let tx_id = result
             .as_ref()
             .map(|tx| {
-                // TODO: Replace with correct serialization method (e.g., sv::messages::Transaction::to_hex if available)
-                "placeholder_txid".to_string()
+                hex::encode(tx.to_bytes()) // Corrected to sv::transaction::Transaction
             })
             .unwrap_or(Ok(String::new()))?;
         let _ = self
