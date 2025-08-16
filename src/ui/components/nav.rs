@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use dioxus_router::prelude::*;
+use dioxus_router::*;
 use uuid::Uuid;
 
 use crate::ui::router::Route;
