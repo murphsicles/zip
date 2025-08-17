@@ -1,7 +1,7 @@
 use crate::errors::ZipError;
 use rand::RngCore;
 use rand::rngs::OsRng;
-use secp256k1::{Secp256k1, SecretKey}; // Replaced sv::keypair::PrivateKey
+use secp256k1::{Secp256k1, SecretKey};
 use sv::public_key::PublicKey;
 use sv::util::hash160;
 
@@ -12,7 +12,7 @@ impl Crypto {
     pub fn generate_private_key() -> Result<SecretKey, ZipError> {
         let secp = Secp256k1::new();
         let mut bytes = [0u8; 32];
-        OsRng.fill_bytes(&mut bytes); // Ensure rand 0.9.3 or later for OsRng
+        rand::thread_rng().fill_bytes(&mut bytes);
         SecretKey::from_slice(&bytes).map_err(|e| ZipError::Crypto(e.to_string()))
     }
 
@@ -20,7 +20,7 @@ impl Crypto {
     pub fn derive_public_key(private_key: &SecretKey) -> PublicKey {
         let secp = Secp256k1::new();
         let public_key = secp256k1::PublicKey::from_secret_key(&secp, private_key);
-        PublicKey::from_slice(&public_key.serialize()).unwrap() // Convert to sv::public_key
+        PublicKey::from_slice(&public_key.serialize()).unwrap()
     }
 
     /// Generates a BSV address from a public key.
