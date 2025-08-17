@@ -11,7 +11,7 @@ impl Security {
     /// Generates a cryptographically secure random salt.
     pub fn generate_salt(len: usize) -> Vec<u8> {
         let mut bytes = vec![0u8; len];
-        OsRng.fill_bytes(&mut bytes);
+        rand::thread_rng().fill_bytes(&mut bytes);
         bytes
     }
 
