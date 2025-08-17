@@ -1,6 +1,6 @@
-use dioxus::prelude::*;
-use dioxus_motion::use_animate; // Corrected from use_animated based on typical API
 use crate::errors::ZipError;
+use dioxus::prelude::*;
+use dioxus_motion::use_animate;
 
 #[derive(Props, PartialEq, Clone)]
 pub struct ErrorProps {
