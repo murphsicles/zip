@@ -36,28 +36,26 @@ pub fn History(cx: Scope) -> Element {
     let current_price = use_signal(|| Decimal::ZERO);
     let historical_prices = use_signal(|| HashMap::new());
 
-    use_effect(move || {
-        async move {
-            let client = Client::new();
-            let resp = client
-                .get(format!(
-                    "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin-sv&vs_currencies={}",
-                    currency.read().to_lowercase()
-                ))
-                .send()
-                .await;
-            let price = match resp {
-                Ok(resp) => match resp.json::<Value>().await {
-                    Ok(json) => json["bitcoin-sv"][currency.read().to_lowercase()]
-                        .as_f64()
-                        .map(|p| Decimal::try_from_f64(p).unwrap_or_default())
-                        .unwrap_or_default(),
-                    Err(_) => Decimal::ZERO,
-                },
+    use_effect(move || async move {
+        let client = Client::new();
+        let resp = client
+            .get(format!(
+                "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin-sv&vs_currencies={}",
+                currency.read().to_lowercase()
+            ))
+            .send()
+            .await;
+        let price = match resp {
+            Ok(resp) => match resp.json::<Value>().await {
+                Ok(json) => json["bitcoin-sv"][currency.read().to_lowercase()]
+                    .as_f64()
+                    .map(|p| Decimal::try_from_f64(p).unwrap_or_default())
+                    .unwrap_or_default(),
                 Err(_) => Decimal::ZERO,
-            };
-            current_price.set(price);
-        }
+            },
+            Err(_) => Decimal::ZERO,
+        };
+        current_price.set(price);
     });
 
     use_effect(move || {
@@ -97,9 +95,9 @@ pub fn History(cx: Scope) -> Element {
                         Ok(resp) => match resp.json::<Value>().await {
                             Ok(json) => json["market_data"]["current_price"]
                                 [currency.read().to_lowercase()]
-                                .as_f64()
-                                .map(|p| Decimal::try_from_f64(p).unwrap_or_default())
-                                .unwrap_or_default(),
+                            .as_f64()
+                            .map(|p| Decimal::try_from_f64(p).unwrap_or_default())
+                            .unwrap_or_default(),
                             Err(_) => Decimal::ZERO,
                         },
                         Err(_) => Decimal::ZERO,
@@ -124,7 +122,10 @@ pub fn History(cx: Scope) -> Element {
                     txid,
                     timestamp: dt
                         .format(
-                            &time::format_description::parse("[year]/[month]/[day]:[hour]:[minute]").unwrap(),
+                            &time::format_description::parse(
+                                "[year]/[month]/[day]:[hour]:[minute]",
+                            )
+                            .unwrap(),
                         )
                         .unwrap_or_default(),
                     from_to: tx_details["from"].as_str().unwrap_or("Unknown").to_string(),
@@ -167,7 +168,10 @@ pub fn History(cx: Scope) -> Element {
 async fn fetch_tx_details(txid: &str) -> Result<Value, reqwest::Error> {
     let client = Client::new();
     client
-        .get(format!("https://api.whatsonchain.com/v1/bsv/main/tx/{}", txid))
+        .get(format!(
+            "https://api.whatsonchain.com/v1/bsv/main/tx/{}",
+            txid
+        ))
         .send()
         .await?
         .json::<Value>()
