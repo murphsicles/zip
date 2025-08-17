@@ -13,10 +13,8 @@ pub fn Home(cx: Scope) -> Element {
     let is_authenticated = use_signal(|| false);
     let user_id = use_signal(|| Uuid::new_v4());
 
-    use_effect(move || {
-        async move {
-            is_authenticated.set(session.is_authenticated(*user_id.read()).await);
-        }
+    use_effect(move || async move {
+        is_authenticated.set(session.is_authenticated(*user_id.read()).await);
     });
 
     slide_right(
