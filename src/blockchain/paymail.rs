@@ -1,9 +1,9 @@
 use bincode;
 use paymail_rs::{PaymailClient, models::PaymentRequest};
-use reqwest; // Added for HTTP client
+use reqwest;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
-use secp256k1::Secp256k1; // Removed SecretKey as not used in initialization
+use secp256k1::Secp256k1;
 use serde_json::Value;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -125,8 +125,8 @@ impl PaymailManager {
         let mut new_aliases = aliases;
         // Store default alias
         new_aliases.insert(default_alias.clone());
-        let serialized = bincode::serialize(&new_aliases)
-            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let serialized =
+            bincode::serialize(&new_aliases).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
         let _ = self
             .telemetry
@@ -190,8 +190,8 @@ impl PaymailManager {
         // Store pending alias
         let mut new_aliases = aliases;
         new_aliases.insert(alias.clone());
-        let serialized = bincode::serialize(&new_aliases)
-            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let serialized =
+            bincode::serialize(&new_aliases).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
         let _ = self
             .telemetry
