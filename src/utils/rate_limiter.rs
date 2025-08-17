@@ -1,8 +1,8 @@
+use crate::errors::ZipError;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{Duration, Instant};
-use crate::errors::ZipError;
 
 /// Rate limiter for controlling request frequency.
 #[derive(Clone)]
