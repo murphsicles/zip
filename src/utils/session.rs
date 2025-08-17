@@ -39,7 +39,8 @@ impl Session {
             is_authenticated: true,
             created_at: chrono::Utc::now(),
         };
-        let serialized = bincode::serialize(&session).map_err(|e| ZipError::Storage(e.to_string()))?;
+        let serialized =
+            bincode::serialize(&session).map_err(|e| ZipError::Storage(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
         let _ = self
             .telemetry
