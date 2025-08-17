@@ -7,9 +7,9 @@ use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use sv::messages::Tx; // Added for manual serialization
+use sv::messages::Tx;
 use sv::script::Script;
-use sv::transaction::Transaction; // Correct import
+use sv::transaction::Transaction;
 use sv::wallet::ExtendedPrivateKey;
 use uuid::Uuid;
 
@@ -109,8 +109,8 @@ impl WalletManager {
             balance_converted: Decimal::ZERO,
             derivation_path: format!("m/44'/0'/0'/0/{}", index),
         };
-        let serialized = bincode::serialize(&data)
-            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let serialized =
+            bincode::serialize(&data).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         let user_id = Uuid::new_v4();
         self.storage.store_user_data(user_id, &serialized)?;
         let _ = self
@@ -167,8 +167,8 @@ impl WalletManager {
             balance_converted,
             derivation_path: format!("m/44'/0'/0'/0/{}", *self.derivation_index.read()),
         };
-        let serialized = bincode::serialize(&data)
-            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let serialized =
+            bincode::serialize(&data).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.store_user_data(user_id, &serialized)?;
         let _ = self
             .telemetry
