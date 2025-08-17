@@ -16,20 +16,18 @@ pub fn Dashboard(cx: Scope) -> Element {
     let balance_converted = use_signal(|| Decimal::ZERO);
     let currency = use_signal(|| "USD".to_string());
 
-    use_effect(move || {
-        async move {
-            match wallet
-                .update_balance(*user_id.read(), &currency.read())
-                .await
-            {
-                Ok((bsv, usd)) => {
-                    balance.set(bsv);
-                    balance_converted.set(usd);
-                }
-                Err(_) => {
-                    balance.set(0);
-                    balance_converted.set(Decimal::ZERO);
-                }
+    use_effect(move || async move {
+        match wallet
+            .update_balance(*user_id.read(), &currency.read())
+            .await
+        {
+            Ok((bsv, usd)) => {
+                balance.set(bsv);
+                balance_converted.set(usd);
+            }
+            Err(_) => {
+                balance.set(0);
+                balance_converted.set(Decimal::ZERO);
             }
         }
     });
