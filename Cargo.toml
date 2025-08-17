@@ -9,9 +9,10 @@ repository = "https://github.com/murphsicles/zip"
 [dependencies]
 async-graphql = { version = "7.0.7", optional = true }
 bincode = "1.3"
+chrono = "0.4"
 dioxus = { version = "0.6.3", features = ["web", "desktop", "mobile"], optional = true }
 dioxus-motion = { version = "0.3.1", optional = true }
-dioxus-router = { version = "0.4", optional = true } # Added for src/ui/components/nav.rs
+dioxus-router = { version = "0.4", optional = true }
 itertools = "0.13"
 keyring = "3.6.3"
 nprint-core = { git = "https://github.com/murphsicles/nPrint", tag = "v0.1.1", package = "nprint-core", optional = true }
