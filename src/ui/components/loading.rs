@@ -1,6 +1,6 @@
+use crate::ui::styles::global_styles;
 use dioxus::prelude::*;
 use dioxus_motion::use_animated;
-use crate::ui::styles::global_styles;
 
 #[derive(Props, PartialEq, Clone)]
 pub struct LoadingProps {
