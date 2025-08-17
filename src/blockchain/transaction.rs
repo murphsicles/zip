@@ -6,8 +6,8 @@ use rand::rngs::OsRng;
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use sv::messages::{Tx, TxIn, TxOut}; // Confirmed via src/transaction/mod.rs example
-use sv::script::Script; // Confirmed via documentation
+use sv::messages::{Tx, TxIn, TxOut};
+use sv::script::Script;
 use sv::transaction::{SIGHASH_ALL, SIGHASH_FORKID, SigHashCache, generate_signature, sighash};
 use sv::util::hash160;
 use uuid::Uuid;
@@ -108,13 +108,14 @@ impl TransactionManager {
                 &mut cache,
             )
             .map_err(|e| ZipError::Blockchain(e.to_string()))?;
-            let signature = generate_signature(&priv_key[..], &sighash, SIGHASH_FORKID | SIGHASH_ALL)
-                .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+            let signature =
+                generate_signature(&priv_key[..], &sighash, SIGHASH_FORKID | SIGHASH_ALL)
+                    .map_err(|e| ZipError::Blockchain(e.to_string()))?;
             let pubkey = PublicKey::from_secret_key(&secp, &priv_key).serialize();
             tx.inputs[i].unlock_script = create_unlock_script(&signature, &pubkey);
         }
-        let serialized = bincode::serialize(&outputs)
-            .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+        let serialized =
+            bincode::serialize(&outputs).map_err(|e| ZipError::Blockchain(e.to_string()))?;
         self.storage.cache_utxos(user_id, &serialized)?;
         Ok(outputs)
     }
@@ -175,8 +176,9 @@ impl TransactionManager {
                 &mut cache,
             )
             .map_err(|e| ZipError::Blockchain(e.to_string()))?;
-            let signature = generate_signature(&priv_key[..], &sighash, SIGHASH_FORKID | SIGHASH_ALL)
-                .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+            let signature =
+                generate_signature(&priv_key[..], &sighash, SIGHASH_FORKID | SIGHASH_ALL)
+                    .map_err(|e| ZipError::Blockchain(e.to_string()))?;
             let pubkey = PublicKey::from_secret_key(&secp, &priv_key).serialize();
             tx.inputs[i].unlock_script = create_unlock_script(&signature, &pubkey);
         }
@@ -196,8 +198,8 @@ impl TransactionManager {
                 amount: balance,
                 script: Script::default(),
             }];
-            let serialized = bincode::serialize(&utxos)
-                .map_err(|e| ZipError::Blockchain(e.to_string()))?;
+            let serialized =
+                bincode::serialize(&utxos).map_err(|e| ZipError::Blockchain(e.to_string()))?;
             self.storage.cache_utxos(user_id, &serialized)?;
             Ok(utxos)
         } else {
