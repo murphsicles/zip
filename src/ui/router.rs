@@ -2,13 +2,26 @@ use dioxus::prelude::*;
 use dioxus_router::prelude::*;
 
 use crate::auth::auth::AuthManager;
-use crate::blockchain::{paymail::PaymailManager, transaction::TransactionManager, wallet::WalletManager};
+use crate::blockchain::{
+    paymail::PaymailManager,
+    transaction::TransactionManager,
+    wallet::WalletManager,
+};
 use crate::integrations::rustbus::RustBusIntegrator;
 use crate::storage::ZipStorage;
 use crate::ui::components::{
-    auth::Auth, auth_callback::AuthCallback, dashboard::Dashboard, error::Error, history::History,
-    home::Home, logout::Logout, nav::NavBar, payment_form::PaymentForm, profile::Profile,
-    settings::Settings, swipe_button::SwipeButton,
+    auth::Auth,
+    auth_callback::AuthCallback,
+    dashboard::Dashboard,
+    error::Error,
+    history::History,
+    home::Home,
+    logout::Logout,
+    nav::NavBar,
+    payment_form::PaymentForm,
+    profile::Profile,
+    settings::Settings,
+    swipe_button::SwipeButton,
 };
 use crate::ui::styles::global_styles;
 use crate::utils::session::Session;
@@ -56,10 +69,17 @@ fn Nav(cx: Scope) -> Element {
 pub fn AppRouter(cx: Scope) -> Element {
     let storage = Arc::new(ZipStorage::new().expect("Failed to initialize storage"));
     let rustbus = Arc::new(RustBusIntegrator::new().expect("Failed to initialize RustBus"));
-    let tx_manager = Arc::new(TransactionManager::new(Arc::clone(&storage), Some(Arc::clone(&rustbus))));
+    let tx_manager = Arc::new(TransactionManager::new(
+        Arc::clone(&storage),
+        Some(Arc::clone(&rustbus)),
+    ));
     let wallet = Arc::new(
-        WalletManager::new(Arc::clone(&storage), Arc::clone(&tx_manager), Some(Arc::clone(&rustbus)))
-            .expect("Failed to initialize wallet"),
+        WalletManager::new(
+            Arc::clone(&storage),
+            Arc::clone(&tx_manager),
+            Some(Arc::clone(&rustbus)),
+        )
+        .expect("Failed to initialize wallet"),
     );
     let auth = AuthManager::new(Arc::clone(&storage)).expect("Failed to initialize auth");
     let paymail = PaymailManager::new(Arc::clone(&storage));
